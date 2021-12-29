@@ -1,0 +1,2 @@
+train_dir: "/mnt/pami23/stma/weather/train/"
+test_dir: "/mnt/pami23/stma/weather/test/"
