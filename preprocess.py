@@ -4,6 +4,8 @@ import yaml
 import argparse
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 from tqdm import tqdm
 from xarray import open_dataset
 
@@ -99,6 +101,20 @@ def main():
     print(np_result.shape)
 
 
+# correlated heat map
+def heat_map_plot(corrMatrix):
+    # Create a figure and a set of subplots, Number of rows/columns of the subplot grid
+    # fig → figure ax → axe can be either a single Axes object or an array of Axes objects if more than one subplot was created
+    f, ax = plt.subplots(figsize=corrMatrix.shape)
+    # cmap is a color palette
+    cmap = sns.diverging_palette(255, 0, as_cmap=True)
+    # use the column names but plot only every n label: e.g. temperature||wind||...
+    # Axes in which to draw the plot, otherwise use the currently-active Axes
+    sns.heatmap(corrMatrix, cmap=cmap, ax=ax)
+
+    f.savefig("corrMatrix1.jpg")
+
+
 def print_single_point():
     file_ = "/mnt/pami23/stma/weather/train/example01002/grid_inputs_05.nc"
     ds = open_dataset(file_)
@@ -116,4 +132,6 @@ def print_single_point():
 
 if __name__ == "__main__":
     #main()
-    get_all_correlation('')
+    #get_all_correlation('')
+    lbl_all = np.load('correlation.npy')
+    heat_map_plot(lbl_all)
