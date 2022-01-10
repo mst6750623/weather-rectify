@@ -47,16 +47,28 @@ def main():
     print(train_dir)
     #no_record_tensor = torch.full((69, 73), -99999.).to('cuda')
     result_list = []
-    for i in tqdm(range(1901, 1962)):
+    for i in tqdm(range(1962)):
         file_name = train_dir + 'example' + '{:0>5d}'.format(i + 1) + '/'
         for j in range(9):
-            grid_file_name = file_name + 'grid_inputs_' + '{:0>2d}'.format(
+            input_file_name = file_name + 'grid_inputs_' + '{:0>2d}'.format(
                 j + 1) + '.nc'
-            if not os.path.isfile(grid_file_name):
+            rain_file_name = file_name + 'obs_grid_rain' + '{:0>2d}'.format(
+                j + 1) + '.nc'
+            temp_file_name = file_name + 'obs_grid_temp' + '{:0>2d}'.format(
+                j + 1) + '.nc'
+            #如果某个文件不存在，就跳过不要这个数据了吧
+            if not os.path.isfile(input_file_name) or not os.path.isfile(
+                    rain_file_name) or not os.path.isfile(temp_file_name):
                 continue
-            ds = open_dataset(grid_file_name)
-            vars_name = [name for name in ds]
-            vars_values = [ds.data_vars[name].values for name in vars_name]
+
+            input = open_dataset(input_file_name)
+            rain = open_dataset(rain_file_name)
+            temp = open_dataset(rain_file_name)
+            print(input)
+            print(rain)
+            print(temp)
+
+            vars_values = read_file(input)
             #针对每个物理量
             temp_list = []
             for values in vars_values:
@@ -82,7 +94,7 @@ def main():
                     temp_list.append(values.flatten().tolist())
 
             result_list += np.asarray(temp_list).transpose().tolist()
-        if i % 50 == 0 and i != 0:
+        if i % 40 == 0 and i != 0:
             np_result = np.asarray(result_list)
             name = '{:0>2d}'.format(int(i / 50)) + 'data'
             name = os.path.join('data', name)
@@ -94,7 +106,7 @@ def main():
     #get_correlation('400data.npy')
     #print(len(result_list))
     np_result = np.asarray(result_list)
-    name = '40data'
+    name = '50data'
     name = os.path.join('data', name)
     np.save(name + '.npy', np_result)
     result_list = []
@@ -130,8 +142,13 @@ def print_single_point():
         print(new_tensor[20][20])
 
 
+def read_file(file):
+    vars_name = [name for name in file]
+    return [file.data_vars[name].values for name in vars_name]
+
+
 if __name__ == "__main__":
-    #main()
+    main()
     #get_all_correlation('')
-    lbl_all = np.load('correlation.npy')
-    heat_map_plot(lbl_all)
+    #lbl_all = np.load('correlation.npy')
+    #heat_map_plot(lbl_all)

@@ -24,4 +24,5 @@ class Trainer(nn.Module):
         '''print('encoder:', self.encoder)
         print('decoder:', self.decoder)
         print('confidence:', self.confidence)'''
-        return self.encoder(x)
+        y = self.encoder(x)
+        return y, self.confidence(x), self.decoder(y)

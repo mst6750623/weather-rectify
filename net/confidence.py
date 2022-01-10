@@ -23,7 +23,7 @@ class confidenceNetwork(nn.Module):
 
         self.fc = nn.Sequential(
             Flatten(),
-            nn.Linear(64, 32),
+            nn.Linear(128 * 1 * 1, 32),
             nn.ReLU(True),
             nn.Dropout(0.5),
             nn.Linear(32, 2)  ##我感觉是2分类啊##
