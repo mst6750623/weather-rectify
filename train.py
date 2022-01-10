@@ -2,6 +2,8 @@ import torch
 import os
 import argparse
 import numpy as np
+import yaml
+from trainer import Trainer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--correlation", type=str, default="correlation.npy")
@@ -16,6 +18,12 @@ def main():
         print("load file ok!")
     else:
         print("correlation file is not exist!")
+
+    config = 'config'
+    config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
+    trainer = Trainer(config['encoder'], config['decoder'],
+                      config['confidence'])
+    trainer.forward()
 
 
 if __name__ == "__main__":
