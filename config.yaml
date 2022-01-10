@@ -10,3 +10,4 @@ decoder:
   out_channels: 58 ##to be edited
 confidence: 0
 epoch: 1
+batch_size: 4

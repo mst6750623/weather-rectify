@@ -64,14 +64,13 @@ def main():
             input = open_dataset(input_file_name)
             rain = open_dataset(rain_file_name)
             temp = open_dataset(rain_file_name)
-            print(input)
-            print(rain)
-            print(temp)
 
-            vars_values = read_file(input)
+            input_values = read_file(input)
+            rain_values = read_file(rain)
+            temp_values = read_file(temp)
             #针对每个物理量
             temp_list = []
-            for values in vars_values:
+            for values in input_values:
                 '''new_tensor = torch.from_numpy(values).to('cuda')
                 if new_tensor.dim()==3:
                     new_tensor = new_tensor.permute(2,0,1)
@@ -92,12 +91,13 @@ def main():
                 else:
                     #temp_list.append(values.flatten().tolist())
                     temp_list.append(values.flatten().tolist())
-
+            temp_list.append(rain_values[0].flatten().tolist())
+            temp_list.append(temp_values[0].flatten().tolist())
             result_list += np.asarray(temp_list).transpose().tolist()
         if i % 40 == 0 and i != 0:
             np_result = np.asarray(result_list)
             name = '{:0>2d}'.format(int(i / 50)) + 'data'
-            name = os.path.join('data', name)
+            name = os.path.join('data_with_label', name)
             np.save(name + '.npy', np_result)
             result_list = []
             print(np_result.shape)
