@@ -6,15 +6,15 @@ import torch.nn.functional as F
 class confidenceNetwork(nn.Module):
     def __init__(self, ):
         super(confidenceNetwork, self).__init__()
-        ##TODO 感觉这里input_channel是不是没改啊 ##
-        ###REPO 我们就是58个物理量呀，这个地方是对第一维做卷积，这里每一层出来的应该是64*69*73###
-        self.conv = nn.Sequential(BasicConv2d(58, 64, 3, bn=True, padding=1),
-                                  BasicConv2d(58, 64, 3, bn=True, padding=1),
-                                  BasicConv2d(58, 64, 3, bn=True, padding=1),
-                                  BasicConv2d(58, 64, 3, bn=True, padding=1))
 
+        self.conv = nn.Sequential(BasicConv2d(58, 64, 3, bn=True, padding=1),
+                                  BasicConv2d(64, 64, 3, bn=True, padding=1),
+                                  BasicConv2d(64, 128, 3, bn=True, padding=1),
+                                  BasicConv2d(128, 128, 3, bn=True, padding=1))
+        ##TODO 感觉这里input_channel是不是没改啊 ##
+        ###REPO 确实没改###
         self.downsample = nn.Sequential(
-            BasicConv2d(37, 128, 1, bn=True, padding=0))
+            BasicConv2d(58, 128, 1, bn=True, padding=0))
 
         # to be continue
 

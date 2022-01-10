@@ -31,7 +31,7 @@ class encoder(nn.Module):
 
         if self.training:
             x = x + torch.normal(mean=torch.full(x.size(),
-                                                 fill_value=self.mean),
+                                                 fill_value=float(self.mean)),
                                  std=self.std).to(x.device)
 
         x = self.layer2(x)

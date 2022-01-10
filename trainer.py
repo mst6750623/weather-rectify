@@ -5,8 +5,9 @@ from net.decoder import decoder
 from net.confidence import confidenceNetwork
 
 
-class Trainer():
+class Trainer(nn.Module):
     def __init__(self, encoder_args, decoder_args, confidence_args):
+        super(Trainer, self).__init__()
         self.encoder = encoder(encoder_args['in_channels'],
                                encoder_args['mid_channels'],
                                encoder_args['out_channels'],
@@ -19,7 +20,8 @@ class Trainer():
         )
         self.confidence = confidenceNetwork()
 
-    def forward(self, ):
-        print('encoder:', self.encoder)
+    def forward(self, x):
+        '''print('encoder:', self.encoder)
         print('decoder:', self.decoder)
-        print('confidence:', self.confidence)
+        print('confidence:', self.confidence)'''
+        return self.encoder(x)
