@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from confidence import BasicConv2d
+from .confidence import BasicConv2d
 
 
 class Decoder(nn.Module):

@@ -30,13 +30,15 @@ def main():
 
     device = 'cuda'
     epoch = config['epoch']
-    trainer = Trainer(config['encoder'], config['decoder'],
-                      config['confidence']).to(device)
+
     dataset = gridDataset(config['train_dir'], isTrain=not opts.test)
     data_iter = DataLoader(dataset,
                            batch_size=config['batch_size'],
                            shuffle=not opts.test)
-    for iter in tqdm(range(epoch)):
+    trainer = Trainer(config['encoder'], config['decoder'],
+                      config['confidence'], data_iter, device).to(device)
+    trainer.confidence_train()
+    '''for iter in tqdm(range(epoch)):
         for i, iter in enumerate(data_iter):
             if i == 10:
                 return
@@ -46,7 +48,9 @@ def main():
             rain = rain.type(torch.FloatTensor).to(device)
             temp = temp.type(torch.FloatTensor).to(device)
             y_hat, confidence, decoder = trainer(input)
-            #print(y_hat.shape, confidence.shape, decoder.shape)
+            #TODO: 注意rain和temp的边界-99999判断
+            #      算算rain的分布，temp的分布
+    '''
 
 
 if __name__ == "__main__":

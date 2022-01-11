@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from confidence import BasicConv2d
+from .confidence import BasicConv2d
 
 
 #########zx 0110##########

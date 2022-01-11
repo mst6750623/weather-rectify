@@ -12,30 +12,43 @@ def read_file(file):
 
 
 class gridDataset(data.Dataset):
-    def __init__(self, data_path, isTrain=True):
+    def __init__(self, data_path, isTrain=True, isFirstTime=False):
         self.length = 0
-        self.input = []
-        self.rain = []
-        self.temp = []
-        # 在这边只扫一遍文件名
-        for i in tqdm(range(1962), desc="Scanning dataset files"):
-            file_name = data_path + 'example' + '{:0>5d}'.format(i + 1) + '/'
-            for j in range(9):
-                input_file_name = file_name + 'grid_inputs_' + '{:0>2d}'.format(
-                    j + 1) + '.nc'
-                rain_file_name = file_name + 'obs_grid_rain' + '{:0>2d}'.format(
-                    j + 1) + '.nc'
-                temp_file_name = file_name + 'obs_grid_temp' + '{:0>2d}'.format(
-                    j + 1) + '.nc'
-                #如果某个文件不存在，就跳过不要这个数据了吧
-                if not os.path.isfile(input_file_name) or not os.path.isfile(
-                        rain_file_name) or not os.path.isfile(temp_file_name):
-                    continue
 
-                self.input.append(input_file_name)
-                self.rain.append(rain_file_name)
-                self.temp.append(temp_file_name)
-                self.length += 1
+        if isFirstTime:
+            # 在这边只扫一遍文件名
+            self.input = []
+            self.rain = []
+            self.temp = []
+            for i in tqdm(range(1962), desc="Scanning dataset files"):
+                file_name = data_path + 'example' + '{:0>5d}'.format(i +
+                                                                     1) + '/'
+                for j in range(9):
+                    input_file_name = file_name + 'grid_inputs_' + '{:0>2d}'.format(
+                        j + 1) + '.nc'
+                    rain_file_name = file_name + 'obs_grid_rain' + '{:0>2d}'.format(
+                        j + 1) + '.nc'
+                    temp_file_name = file_name + 'obs_grid_temp' + '{:0>2d}'.format(
+                        j + 1) + '.nc'
+                    #如果某个文件不存在，就跳过不要这个数据了吧
+                    if not os.path.isfile(
+                            input_file_name) or not os.path.isfile(
+                                rain_file_name) or not os.path.isfile(
+                                    temp_file_name):
+                        continue
+
+                    self.input.append(input_file_name)
+                    self.rain.append(rain_file_name)
+                    self.temp.append(temp_file_name)
+                    self.length += 1
+            np.save('input.npy', self.input)
+            np.save('rain.npy', self.rain)
+            np.save('temp.npy', self.temp)
+        else:
+            self.input = np.load('input.npy')
+            self.rain = np.load('rain.npy')
+            self.temp = np.load('temp.npy')
+            self.length = self.input.shape[0]
 
         self.length = int(0.9 * self.length)
         train_len = self.length
@@ -55,11 +68,10 @@ class gridDataset(data.Dataset):
 
     def __getitem__(self, idx):
         #在这边读路径下的数据
-        print(idx)
+
         input_file_name = self.input[idx]
         rain_file_name = self.rain[idx]
         temp_file_name = self.temp[idx]
-
         input = open_dataset(input_file_name)
         rain = open_dataset(rain_file_name)
         temp = open_dataset(temp_file_name)
@@ -79,6 +91,7 @@ class gridDataset(data.Dataset):
                 #temp_list.append(values.flatten().tolist())
                 temp_list.append(values.tolist())
         input = np.asarray(temp_list)
+
         input = torch.from_numpy(input)
         rain = torch.from_numpy(rain_values[0])
         temp = torch.from_numpy(temp_values[0])
@@ -86,6 +99,7 @@ class gridDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    dataset = gridDataset("/mnt/pami23/stma/weather/train/", True)
+    dataset = gridDataset("/mnt/pami23/stma/weather/train/", True, False)
 
-    dataset.__getitem__(0)
+    input, rain, temp = dataset.__getitem__(0)
+    print(input.shape, rain.shape, temp.shape)
