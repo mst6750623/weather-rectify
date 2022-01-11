@@ -10,7 +10,8 @@ class Encoder(nn.Module):
                  mid_channels=32,
                  out_channels=64,
                  mean=0,
-                 std=1e-1):
+                 std=1e-1,
+                 training=True):
         super(Encoder, self).__init__()
 
         ###args for Gaussian####
@@ -25,6 +26,7 @@ class Encoder(nn.Module):
             nn.MaxPool2d(2),
             BasicConv2d(mid_channels, out_channels, 3, bn=True, padding=1),
             BasicConv2d(out_channels, out_channels, 3, bn=True, padding=1))
+        self.training = training
 
     def forward(self, x):
         x = self.layer1(x)

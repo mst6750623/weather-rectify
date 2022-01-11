@@ -12,9 +12,9 @@ class CombinatorialNet(nn.Module):
                  out_channels_for_enc,
                  mid_channels_for_OD,
                  out_channels_for_OD,
-                 num_of_classes,
                  mid_channels_for_dec,
                  out_channels_for_dec,
+                 num_of_classes,
                  noise_mean=0,
                  noise_std=1e-1):
         super(CombinatorialNet, self).__init__()
@@ -26,14 +26,18 @@ class CombinatorialNet(nn.Module):
         self.OD = Orn(out_channels_for_enc, mid_channels_for_OD,
                       out_channels_for_OD, num_of_classes)
 
-    def forward(self, x):
+    def forward(self, x, isOrdinal):
         x = self.encoder(x)
-        return self.OD(x), self.decoder(x)
+        if isOrdinal:
+            x = self.OD(x)
+        else:
+            x = self.decoder(x)
+        return x
 
 
 if __name__ == '__main__':
     x = torch.randn((8, 58, 69, 73))
-    net = CombinatorialNet(58, 32, 64, 128, 32, 5, 32, 58)  ##4类好像就够了吧？
+    net = CombinatorialNet(58, 32, 64, 128, 32, 32, 58, 5)  ##4类好像就够了吧？
     ret_for_od, ret_for_dec = net(x)
     print(ret_for_od)
     print(ret_for_dec)

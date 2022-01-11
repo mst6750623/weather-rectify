@@ -13,8 +13,7 @@ def read_file(file):
 
 class gridDataset(data.Dataset):
     def __init__(self, data_path, isTrain=True, isFirstTime=False):
-        self.length = 0
-
+        total_len = 0
         if isFirstTime:
             # 在这边只扫一遍文件名
             self.input = []
@@ -40,7 +39,7 @@ class gridDataset(data.Dataset):
                     self.input.append(input_file_name)
                     self.rain.append(rain_file_name)
                     self.temp.append(temp_file_name)
-                    self.length += 1
+                    total_len += 1
             np.save('input.npy', self.input)
             np.save('rain.npy', self.rain)
             np.save('temp.npy', self.temp)
@@ -48,18 +47,19 @@ class gridDataset(data.Dataset):
             self.input = np.load('input.npy')
             self.rain = np.load('rain.npy')
             self.temp = np.load('temp.npy')
-            self.length = self.input.shape[0]
+            total_len = self.input.shape[0]
 
-        self.length = int(0.9 * self.length)
-        train_len = self.length
+        train_len = int(0.9 * total_len)
         if isTrain:
             self.input = self.input[:train_len]
             self.rain = self.rain[:train_len]
             self.temp = self.temp[:train_len]
+            self.length = int(0.9 * total_len)
         else:
             self.input = self.input[train_len:]
             self.rain = self.rain[train_len:]
             self.temp = self.temp[train_len:]
+            self.length = int(0.1 * total_len)
 
         print("length:", self.length)
 
@@ -80,17 +80,30 @@ class gridDataset(data.Dataset):
         rain_values = read_file(rain)
         temp_values = read_file(temp)
 
+        mean = torch.zeros(58)
+        std = torch.zeros(58)
         temp_list = []
+        i = 0
         for values in input_values:
+
             if values.ndim == 3:
                 values = np.transpose(values, (2, 0, 1))
                 for num in range(values.shape[0]):
                     #temp_list.append(values[num].flatten().tolist())
                     temp_list.append(values[num].tolist())
+                    mean[i] += values[num].mean()
+                    std[i] += values[num].std()
             else:
                 #temp_list.append(values.flatten().tolist())
                 temp_list.append(values.tolist())
+                mean[i] += values.mean()
+                std[i] += values.std()
+            i += 1
         input = np.asarray(temp_list)
+
+        mean.div_(self.length)
+        std.div_(self.length)
+        print(mean, std)
 
         input = torch.from_numpy(input)
         rain = torch.from_numpy(rain_values[0])

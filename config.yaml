@@ -1,13 +1,18 @@
 train_dir: "/mnt/pami23/stma/weather/train/"
 test_dir: "/mnt/pami23/stma/weather/test/"
-encoder:
-  in_channels: 58
-  mid_channels: 32
-  out_channels: 64
-decoder:
-  in_channels: 64
-  mid_channels: 32
-  out_channels: 58 ##to be edited
+combinatotorial:
+  encoder:
+    in_channels: 58
+    mid_channels: 32
+    out_channels: 64
+  decoder:
+    mid_channels: 32
+    out_channels: 58 ##to be edited
+  ordinal:
+    mid_channels: 128
+    out_channels: 32
+  nclass: 4
 confidence: 0
 epoch: 1
 batch_size: 4
+num_workers: 4
