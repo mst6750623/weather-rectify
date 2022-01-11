@@ -1,17 +1,17 @@
 import torch
 import torch.nn as nn
-from .confidence import BasicConv2d
+from confidence import BasicConv2d
 
 
 #########zx 0110##########
-class encoder(nn.Module):
+class Encoder(nn.Module):
     def __init__(self,
                  in_channels,
                  mid_channels=32,
                  out_channels=64,
                  mean=0,
                  std=1e-1):
-        super(encoder, self).__init__()
+        super(Encoder, self).__init__()
 
         ###args for Gaussian####
         self.mean = mean
