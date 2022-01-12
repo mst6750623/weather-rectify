@@ -10,7 +10,7 @@ from torch.utils.data.dataloader import DataLoader
 from dataset import gridDataset
 import yaml
 
-writer = SummaryWriter(comment='encoder-decoder2')
+writer = SummaryWriter(comment='encoder-decoder lr=0.1fixencoder32')
 
 
 class CombinatorialTrainer(nn.Module):
@@ -48,22 +48,20 @@ class CombinatorialTrainer(nn.Module):
         return self.net(x)
 
     def encoder_train(self,
-                      epoch=200,
-                      lr=0.001,
-                      save_path1='checkpoint/encoder2.pth',
-                      save_path2='checkpoint/decoder2.pth'):
+                      epoch=5000,
+                      lr=0.1,
+                      save_path1='checkpoint/encoder3.pth',
+                      save_path2='checkpoint/decoder3.pth'):
         optimizer = torch.optim.Adam(
             list(self.net.encoder.parameters()) +
             list(self.net.decoder.parameters()), lr)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=10000,
-                                                         gamma=0.1)
+        #self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=10000,gamma=0.1)
         tb_log_intv = 200
         total_steps = 0
         for step in range(epoch):
             losses = []
             for i, iter in enumerate(tqdm(self.data_iter)):
-                [input, _, _] = iter
+                input, _, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 torch.set_printoptions(profile="full")
 
@@ -78,12 +76,12 @@ class CombinatorialTrainer(nn.Module):
                 optimizer.step()
                 total_steps += 1
                 losses.append(loss.item())
-                if i % tb_log_intv == 0 and i != 0:
+                writer.add_scalar("iter_Loss",
+                                  loss.item(),
+                                  global_step=total_steps)
+                '''if i % tb_log_intv == 0 and i != 0:
                     avgl = np.mean(losses[-tb_log_intv:])
-                    print("iter_Loss:", avgl)
-                    writer.add_scalar("iter_Loss",
-                                      avgl,
-                                      global_step=total_steps)
+                    print("iter_Loss:", avgl)'''
 
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999
             print('epoch_loss:{}'.format(np.mean(losses[-993:])))

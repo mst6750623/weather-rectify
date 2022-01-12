@@ -9,8 +9,6 @@ from net.confidence import confidenceNetwork
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(comment='confidence')
-
 
 class ConfidenceTrainer(nn.Module):
     def __init__(self, confidence_args, data_iter, device):
@@ -19,6 +17,7 @@ class ConfidenceTrainer(nn.Module):
         self.init_params()
         self.data_iter = data_iter
         self.device = device
+        self.writer = SummaryWriter(comment='confidence')
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -87,13 +86,15 @@ class ConfidenceTrainer(nn.Module):
                     #print(nn.MSELoss()(y_hat, y).item())
                     avgl = np.mean(losses[-tb_log_intv:])
                     print("iter_Loss:", avgl)
-                    writer.add_scalar("iter_Loss",
-                                      avgl,
-                                      global_step=total_steps)
+                    self.writer.add_scalar("iter_Loss",
+                                           avgl,
+                                           global_step=total_steps)
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999
             print('total_loss:{}'.format(np.mean(losses)))
-            writer.add_scalar("epoch_Loss", np.mean(losses), global_step=step)
-        writer.flush()
+            self.writer.add_scalar("epoch_Loss",
+                                   np.mean(losses),
+                                   global_step=step)
+        self.writer.flush()
         torch.save(self.confidence.state_dict(), save_path)
         return
 

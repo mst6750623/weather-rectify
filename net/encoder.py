@@ -23,7 +23,8 @@ class Encoder(nn.Module):
             BasicConv2d(in_channels, mid_channels, 1, bn=True),
             BasicConv2d(mid_channels, mid_channels, 3, bn=True, padding=1))
         self.layer2 = nn.Sequential(
-            nn.MaxPool2d(2),
+            #nn.MaxPool2d(2),
+            nn.AdaptiveAvgPool2d(32),
             BasicConv2d(mid_channels, out_channels, 3, bn=True, padding=1),
             BasicConv2d(out_channels, out_channels, 3, bn=True, padding=1))
         self.training = training
@@ -38,3 +39,10 @@ class Encoder(nn.Module):
 
         x = self.layer2(x)
         return x
+
+
+if __name__ == '__main__':
+    x = torch.randn((8, 58, 69, 73))
+    net = Encoder(58)
+    ret_for_od = net(x)
+    print(ret_for_od.shape)

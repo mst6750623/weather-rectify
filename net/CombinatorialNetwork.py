@@ -39,5 +39,5 @@ if __name__ == '__main__':
     x = torch.randn((8, 58, 69, 73))
     net = CombinatorialNet(58, 32, 64, 128, 32, 32, 58, 5)  ##4类好像就够了吧？
     ret_for_od, ret_for_dec = net(x)
-    print(ret_for_od)
-    print(ret_for_dec)
+    print(ret_for_od.shape)
+    print(ret_for_dec.shape)
