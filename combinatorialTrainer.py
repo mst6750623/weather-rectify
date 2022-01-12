@@ -6,8 +6,11 @@ import numpy as np
 from net.CombinatorialNetwork import CombinatorialNet
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data.dataloader import DataLoader
+from dataset import gridDataset
+import yaml
 
-writer = SummaryWriter()
+writer = SummaryWriter(comment='encoder-decoder2')
 
 
 class CombinatorialTrainer(nn.Module):
@@ -45,17 +48,17 @@ class CombinatorialTrainer(nn.Module):
         return self.net(x)
 
     def encoder_train(self,
-                      epoch=100,
-                      lr=0.0001,
-                      save_path1='checkpoint/encoder.pth',
-                      save_path2='checkpoint/decoder.pth'):
+                      epoch=200,
+                      lr=0.001,
+                      save_path1='checkpoint/encoder2.pth',
+                      save_path2='checkpoint/decoder2.pth'):
         optimizer = torch.optim.Adam(
             list(self.net.encoder.parameters()) +
             list(self.net.decoder.parameters()), lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=1000,
+                                                         step_size=10000,
                                                          gamma=0.1)
-        tb_log_intv = 100
+        tb_log_intv = 200
         total_steps = 0
         for step in range(epoch):
             losses = []
@@ -83,11 +86,41 @@ class CombinatorialTrainer(nn.Module):
                                       global_step=total_steps)
 
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999
+            print('epoch_loss:{}'.format(np.mean(losses[-993:])))
             print('total_loss:{}'.format(np.mean(losses)))
             writer.add_scalar("epoch_Loss", np.mean(losses), global_step=step)
         writer.flush()
         torch.save(self.net.encoder.state_dict(), save_path1)
         torch.save(self.net.decoder.state_dict(), save_path2)
+        return
+
+    def confidence_evaluate(self):
+        self.net.eval()
+        total_steps = 0
+        losses = []
+        for i, iter in enumerate(tqdm(self.data_iter)):
+            [input, rain, temp] = iter
+            input = input.type(torch.FloatTensor).to(self.device)
+            mask = self.get_mask(input)
+            y_hat = self.confidence(input)
+            rain = self.zero_mask(rain)
+            y = torch.zeros_like(y_hat).to(self.device)
+            for j in range(rain.shape[0]):
+                #print(torch.sum(rain[j]))
+                if torch.sum(rain[j]) > 302.1:
+                    y[j] = torch.Tensor((0, 1))
+                else:
+                    y[j] = torch.Tensor((1, 0))
+            with torch.no_grad():
+                y_hat = F.softmax(y_hat, dim=1)
+                loss = nn.MSELoss()(y_hat, y)
+                total_steps += 1
+                losses.append(loss.item())
+        print(
+            'total num: ',
+            total_steps,
+            " total MSEloss: {:.5f}".format(np.mean(losses)),
+        )
         return
 
     def BCEloss(self, x, target, reduction='mean'):
@@ -108,3 +141,38 @@ class CombinatorialTrainer(nn.Module):
         oneHotMask = oneHotMask.scatter_(1, maxIdxs, 1.0)
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
+
+
+if __name__ == '__main__':
+    device = 'cuda'
+    config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
+    dataset = gridDataset(config['train_dir'], isTrain=True)
+    data_iter = DataLoader(dataset,
+                           batch_size=config['batch_size'],
+                           num_workers=config['num_workers'],
+                           shuffle=True)
+    mean = 0
+    std_tensor = torch.load('processed_data/std.pth')
+    print(std_tensor.shape)
+    std = 1
+    losses = []
+    tb_log_intv = 100
+    needed_tensor = torch.zeros((1, 58, 69, 73))
+    for i in range(58):
+        needed_tensor[0][i] = torch.full((69, 73),
+                                         fill_value=float(std_tensor[i] / 100))
+
+    needed_tensor = needed_tensor.repeat((16, 1, 1, 1))
+    print(needed_tensor.shape)
+    for i, iter in enumerate(tqdm(data_iter)):
+        [input, _, _] = iter
+        input = input.type(torch.FloatTensor).to(device)
+
+        random = input + torch.normal(mean=torch.full(input.size(),
+                                                      fill_value=float(mean)),
+                                      std=needed_tensor).to(device)
+        loss = nn.MSELoss()(random, input)
+        losses.append(loss.item())
+        if i % tb_log_intv == 0 and i != 0:
+            avgl = np.mean(losses[-tb_log_intv:])
+            print("iter_Loss:", avgl)

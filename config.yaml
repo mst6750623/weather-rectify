@@ -14,5 +14,5 @@ combinatotorial:
   nclass: 4
 confidence: 0
 epoch: 1
-batch_size: 4
-num_workers: 4
+batch_size: 16
+num_workers: 8

@@ -33,7 +33,10 @@ def main():
 
     dataset = gridDataset(config['train_dir'], isTrain=not opts.test)
     if opts.test:
-        data_iter = DataLoader(dataset, batch_size=1, shuffle=not opts.test)
+        data_iter = DataLoader(dataset,
+                               batch_size=1,
+                               shuffle=not opts.test,
+                               pin_memory=True)
         trainer = ConfidenceTrainer(config['confidence'], data_iter,
                                     device).to(device)
         trainer.initialize(opts.checkpoint_path)
@@ -42,7 +45,8 @@ def main():
         data_iter = DataLoader(dataset,
                                batch_size=config['batch_size'],
                                num_workers=config['num_workers'],
-                               shuffle=not opts.test)
+                               shuffle=not opts.test,
+                               pin_memory=True)
         #trainer = ConfidenceTrainer(config['confidence'], data_iter,device).to(device)
         trainer = CombinatorialTrainer(config['combinatotorial'], data_iter,
                                        device).to(device)

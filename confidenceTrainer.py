@@ -9,7 +9,7 @@ from net.confidence import confidenceNetwork
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter()
+writer = SummaryWriter(comment='confidence')
 
 
 class ConfidenceTrainer(nn.Module):
