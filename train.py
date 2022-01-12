@@ -11,7 +11,8 @@ from confidenceTrainer import ConfidenceTrainer
 from combinatorialTrainer import CombinatorialTrainer
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--correlation", type=str, default="correlation.npy")
+parser.add_argument("--model", type=str, default="confidence")
+parser.add_argument("--modelname", type=str, default="confidence")
 parser.add_argument(
     "--test",
     type=bool,
@@ -32,25 +33,47 @@ def main():
     epoch = config['epoch']
 
     dataset = gridDataset(config['train_dir'], isTrain=not opts.test)
+    train_iter = DataLoader(dataset,
+                            batch_size=config['batch_size'],
+                            num_workers=config['num_workers'],
+                            shuffle=not opts.test,
+                            pin_memory=True)
+    test_iter = DataLoader(dataset,
+                           batch_size=1,
+                           shuffle=not opts.test,
+                           pin_memory=True)
     if opts.test:
-        data_iter = DataLoader(dataset,
-                               batch_size=1,
-                               shuffle=not opts.test,
-                               pin_memory=True)
-        trainer = ConfidenceTrainer(config['confidence'], data_iter,
-                                    device).to(device)
-        trainer.initialize(opts.checkpoint_path)
-        trainer.confidence_evaluate()
+
+        if opts.model == 'confidence':
+            trainer = ConfidenceTrainer(config['confidence'], train_iter,
+                                        test_iter, device).to(device)
+            trainer.initialize(opts.checkpoint_path)
+            trainer.confidence_evaluate()
+        elif opts.model == 'combinatorial':
+            trainer = CombinatorialTrainer(config['combinatotorial'],
+                                           train_iter, test_iter,
+                                           device).to(device)
+        else:
+            print('There is no correlated model!')
     else:
-        data_iter = DataLoader(dataset,
-                               batch_size=config['batch_size'],
-                               num_workers=config['num_workers'],
-                               shuffle=not opts.test,
-                               pin_memory=True)
-        #trainer = ConfidenceTrainer(config['confidence'], data_iter,device).to(device)
-        trainer = CombinatorialTrainer(config['combinatotorial'], data_iter,
-                                       device).to(device)
-        trainer.encoder_train()
+
+        if opts.model == 'confidence':
+            trainer = ConfidenceTrainer(config['confidence'], train_iter,
+                                        test_iter, device,
+                                        opts.modelname).to(device)
+            trainer.confidence_train(epoch=1000,
+                                     lr=0.0001,
+                                     save_path='checkpoint/confidence1.pth')
+        elif opts.model == 'combinatorial':
+            trainer = CombinatorialTrainer(config['combinatotorial'],
+                                           train_iter, test_iter, device,
+                                           opts.modelname).to(device)
+            trainer.encoder_train(epoch=1000,
+                                  lr=0.1,
+                                  save_path1='checkpoint/encoder3.pth',
+                                  save_path2='checkpoint/decoder3.pth')
+        else:
+            print('There is no correlated model!')
         #trainer.confidence_train()
 
 

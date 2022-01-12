@@ -11,13 +11,19 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class ConfidenceTrainer(nn.Module):
-    def __init__(self, confidence_args, data_iter, device):
+    def __init__(self,
+                 confidence_args,
+                 train_iter,
+                 evaluate_iter,
+                 device,
+                 writer='confidence'):
         super(ConfidenceTrainer, self).__init__()
         self.confidence = confidenceNetwork()
         self.init_params()
-        self.data_iter = data_iter
+        self.train_iter = train_iter,
+        self.evaluate_iter = evaluate_iter,
         self.device = device
-        self.writer = SummaryWriter(comment='confidence')
+        self.writer = SummaryWriter(comment=writer)
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -42,19 +48,14 @@ class ConfidenceTrainer(nn.Module):
     def confidence_train(self,
                          epoch=5,
                          lr=0.0001,
-                         weight_decay=0.99,
                          save_path='checkpoint/confidence2.pth'):
-        optimizer = torch.optim.Adam(self.confidence.parameters(),
-                                     lr,
-                                     weight_decay=weight_decay)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=1000,
-                                                         gamma=0.1)
+        optimizer = torch.optim.Adam(self.confidence.parameters(), lr)
+        #self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=1000,gamma=0.1)
         tb_log_intv = 100
         total_steps = 0
         for step in range(epoch):
             losses = []
-            for i, iter in enumerate(tqdm(self.data_iter)):
+            for i, iter in enumerate(tqdm(self.train_iter)):
 
                 [input, rain, temp] = iter
                 #原本是double的，但网络参数是float，不改输入的话，就得在网络参数上手动改（较为麻烦）
@@ -102,7 +103,7 @@ class ConfidenceTrainer(nn.Module):
         self.confidence.eval()
         total_steps = 0
         losses = []
-        for i, iter in enumerate(tqdm(self.data_iter)):
+        for i, iter in enumerate(tqdm(self.evaluate_iter)):
             [input, rain, temp] = iter
             input = input.type(torch.FloatTensor).to(self.device)
             rain = rain.type(torch.FloatTensor).to(self.device)
