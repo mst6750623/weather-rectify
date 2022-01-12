@@ -40,13 +40,13 @@ class gridDataset(data.Dataset):
                     self.rain.append(rain_file_name)
                     self.temp.append(temp_file_name)
                     total_len += 1
-            np.save('input.npy', self.input)
-            np.save('rain.npy', self.rain)
-            np.save('temp.npy', self.temp)
+            np.save('processed_data/input.npy', self.input)
+            np.save('processed_data/rain.npy', self.rain)
+            np.save('processed_data/temp.npy', self.temp)
         else:
-            self.input = np.load('input.npy')
-            self.rain = np.load('rain.npy')
-            self.temp = np.load('temp.npy')
+            self.input = np.load('processed_data/input.npy')
+            self.rain = np.load('processed_data/rain.npy')
+            self.temp = np.load('processed_data/temp.npy')
             total_len = self.input.shape[0]
 
         train_len = int(0.9 * total_len)
@@ -61,6 +61,8 @@ class gridDataset(data.Dataset):
             self.temp = self.temp[train_len:]
             self.length = int(0.1 * total_len)
 
+        self.mean = torch.load('processed_data/mean.pth').numpy()
+        self.std = torch.load('processed_data/std.pth').numpy()
         print("length:", self.length)
 
     def __len__(self):
@@ -80,8 +82,6 @@ class gridDataset(data.Dataset):
         rain_values = read_file(rain)
         temp_values = read_file(temp)
 
-        mean = torch.zeros(58)
-        std = torch.zeros(58)
         temp_list = []
         i = 0
         for values in input_values:
@@ -90,20 +90,16 @@ class gridDataset(data.Dataset):
                 values = np.transpose(values, (2, 0, 1))
                 for num in range(values.shape[0]):
                     #temp_list.append(values[num].flatten().tolist())
-                    temp_list.append(values[num].tolist())
-                    mean[i] += values[num].mean()
-                    std[i] += values[num].std()
+                    temp_list.append(
+                        (values[num] - self.mean[i]) / self.std[i].tolist())
+                    i += 1
             else:
                 #temp_list.append(values.flatten().tolist())
-                temp_list.append(values.tolist())
-                mean[i] += values.mean()
-                std[i] += values.std()
-            i += 1
-        input = np.asarray(temp_list)
+                temp_list.append(
+                    (values - self.mean[i]) / self.std[i].tolist())
+                i += 1
 
-        mean.div_(self.length)
-        std.div_(self.length)
-        print(mean, std)
+        input = np.asarray(temp_list)
 
         input = torch.from_numpy(input)
         rain = torch.from_numpy(rain_values[0])
@@ -112,7 +108,37 @@ class gridDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    dataset = gridDataset("/mnt/pami23/stma/weather/train/", True, False)
+    dataset = gridDataset("/mnt/pami23/stma/weather/train/",
+                          isTrain=True,
+                          isFirstTime=False)
+    '''mean = torch.zeros(58)
+    std = torch.zeros(58)
+    for idx in tqdm(range(dataset.length)):
+        input = open_dataset(dataset.input[idx])
 
+        input_values = read_file(input)
+        i = 0
+        for values in input_values:
+            if values.ndim == 3:
+                values = np.transpose(values, (2, 0, 1))
+                for num in range(values.shape[0]):
+                    #temp_list.append(values[num].flatten().tolist())
+                    #temp_list.append(values[num].tolist())
+
+                    mean[i] += values[num].mean()
+                    std[i] += values[num].std()
+                    i += 1
+            else:
+                #temp_list.append(values.flatten().tolist())
+                #temp_list.append(values.tolist())
+                mean[i] += values.mean()
+                std[i] += values.std()
+                i += 1
+
+    mean.div_(dataset.length)
+    std.div_(dataset.length)
+    print(mean, std)
+    torch.save(mean, 'processed_data/mean.pth')
+    torch.save(std, 'processed_data/std.pth')'''
     input, rain, temp = dataset.__getitem__(0)
     print(input.shape, rain.shape, temp.shape)

@@ -46,7 +46,7 @@ class CombinatorialTrainer(nn.Module):
 
     def encoder_train(self,
                       epoch=100,
-                      lr=100,
+                      lr=0.0001,
                       save_path1='checkpoint/encoder.pth',
                       save_path2='checkpoint/decoder.pth'):
         optimizer = torch.optim.Adam(
@@ -84,9 +84,7 @@ class CombinatorialTrainer(nn.Module):
 
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999
             print('total_loss:{}'.format(np.mean(losses)))
-            writer.add_scalar("epoch_Loss",
-                              np.mean(losses),
-                              global_step=total_steps)
+            writer.add_scalar("epoch_Loss", np.mean(losses), global_step=step)
         writer.flush()
         torch.save(self.net.encoder.state_dict(), save_path1)
         torch.save(self.net.decoder.state_dict(), save_path2)
