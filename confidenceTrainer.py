@@ -11,17 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class ConfidenceTrainer(nn.Module):
-    def __init__(self,
-                 confidence_args,
-                 train_iter,
-                 evaluate_iter,
-                 device,
-                 writer='confidence'):
+    def __init__(self, train_iter, evaluate_iter, device, writer='confidence'):
         super(ConfidenceTrainer, self).__init__()
         self.confidence = confidenceNetwork()
         self.init_params()
-        self.train_iter = train_iter,
-        self.evaluate_iter = evaluate_iter,
+        self.train_iter = train_iter
+        self.evaluate_iter = evaluate_iter
+        print(len(self.train_iter), len(self.evaluate_iter))
         self.device = device
         self.writer = SummaryWriter(comment=writer)
 
@@ -53,11 +49,11 @@ class ConfidenceTrainer(nn.Module):
         #self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=1000,gamma=0.1)
         tb_log_intv = 100
         total_steps = 0
+        evaluate_loss = 99999
         for step in range(epoch):
             losses = []
             for i, iter in enumerate(tqdm(self.train_iter)):
-
-                [input, rain, temp] = iter
+                input, rain, temp = iter
                 #原本是double的，但网络参数是float，不改输入的话，就得在网络参数上手动改（较为麻烦）
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(self.device)
@@ -95,6 +91,12 @@ class ConfidenceTrainer(nn.Module):
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
+            if step % 50 == 0 and step != 0:
+                temp_evaluate_loss = self.confidence_evaluate()
+                if temp_evaluate_loss < evaluate_loss:
+                    evaluate_loss = temp_evaluate_loss
+                    torch.save(self.confidence.state_dict(), save_path)
+
         self.writer.flush()
         torch.save(self.confidence.state_dict(), save_path)
         return
@@ -104,7 +106,7 @@ class ConfidenceTrainer(nn.Module):
         total_steps = 0
         losses = []
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
-            [input, rain, temp] = iter
+            input, rain, temp = iter
             input = input.type(torch.FloatTensor).to(self.device)
             rain = rain.type(torch.FloatTensor).to(self.device)
             rain = rain[:, 8:61, 8:65]  #这个地方还得再算算，边界判断！
@@ -127,7 +129,7 @@ class ConfidenceTrainer(nn.Module):
             total_steps,
             " total MSEloss: {:.5f}".format(np.mean(losses)),
         )
-        return
+        return np.mean(losses)
 
     def BCEloss(self, x, target, reduction='mean'):
         return nn.BCELoss(reduction=reduction)(x, target)

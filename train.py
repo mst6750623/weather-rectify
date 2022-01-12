@@ -32,41 +32,42 @@ def main():
     device = 'cuda'
     epoch = config['epoch']
 
-    dataset = gridDataset(config['train_dir'], isTrain=not opts.test)
-    train_iter = DataLoader(dataset,
+    train_dataset = gridDataset(config['train_dir'], isTrain=True)
+    evaluate_dataset = gridDataset(config['train_dir'], isTrain=False)
+    train_iter = DataLoader(train_dataset,
                             batch_size=config['batch_size'],
                             num_workers=config['num_workers'],
-                            shuffle=not opts.test,
+                            shuffle=True,
                             pin_memory=True)
-    test_iter = DataLoader(dataset,
-                           batch_size=1,
-                           shuffle=not opts.test,
-                           pin_memory=True)
+    evaluate_iter = DataLoader(evaluate_dataset,
+                               batch_size=1,
+                               shuffle=False,
+                               pin_memory=True)
+
     if opts.test:
 
         if opts.model == 'confidence':
-            trainer = ConfidenceTrainer(config['confidence'], train_iter,
-                                        test_iter, device).to(device)
+            trainer = ConfidenceTrainer(train_iter, evaluate_iter, device,
+                                        opts.modelname).to(device)
             trainer.initialize(opts.checkpoint_path)
             trainer.confidence_evaluate()
         elif opts.model == 'combinatorial':
             trainer = CombinatorialTrainer(config['combinatotorial'],
-                                           train_iter, test_iter,
-                                           device).to(device)
+                                           train_iter, evaluate_iter, device,
+                                           opts.modelname).to(device)
         else:
             print('There is no correlated model!')
     else:
 
         if opts.model == 'confidence':
-            trainer = ConfidenceTrainer(config['confidence'], train_iter,
-                                        test_iter, device,
+            trainer = ConfidenceTrainer(train_iter, evaluate_iter, device,
                                         opts.modelname).to(device)
             trainer.confidence_train(epoch=1000,
                                      lr=0.0001,
                                      save_path='checkpoint/confidence1.pth')
         elif opts.model == 'combinatorial':
             trainer = CombinatorialTrainer(config['combinatotorial'],
-                                           train_iter, test_iter, device,
+                                           train_iter, evaluate_iter, device,
                                            opts.modelname).to(device)
             trainer.encoder_train(epoch=1000,
                                   lr=0.1,

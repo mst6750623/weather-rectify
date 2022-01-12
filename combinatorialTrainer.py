@@ -98,7 +98,7 @@ class CombinatorialTrainer(nn.Module):
                                    np.mean(losses),
                                    global_step=step)
             if step % 50 == 0 and step != 0:
-                temp_evaluate_loss = self.confidence_evaluate()
+                temp_evaluate_loss = self.combinatorial_evaluate()
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
                     torch.save(self.net.encoder.state_dict(), save_path1)
@@ -108,13 +108,13 @@ class CombinatorialTrainer(nn.Module):
         torch.save(self.net.decoder.state_dict(), save_path2)
         return
 
-    def confidence_evaluate(self):
+    def combinatorial_evaluate(self):
         self.net.eval()
         total_steps = 0
         losses = []
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                [input, rain, temp] = iter
+                input, rain, temp = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 y_hat = self.net(input, isOrdinal=False)
                 mask = self.get_mask(input)
