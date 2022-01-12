@@ -5,7 +5,7 @@ Code for weather rectify competition
 ![](corrMatrix.jpg)
 
 ## TODO: 
-[ ]训练三个网络
-[ ]ordinal网络trainer构建
-[ ]validate模块构建
-[ ]跑测试集！
+- [ ] 训练三个网络
+- [ ] ordinal网络trainer构建
+- [ ] validate模块构建
+- [ ] 跑测试集！
