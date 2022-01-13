@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
+import os
 from tqdm import tqdm
 from net.CombinatorialNetwork import CombinatorialNet
 from net.confidence import confidenceNetwork
@@ -76,16 +77,25 @@ class Validate(nn.Module):
         for i, iter in enumerate(tqdm(self.data_iter), desc="validating: "):
             input, rain, temp = iter
             input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device)
+            rain = rain.type(torch.FloatTensor).to(self.device) #(N, 1)
             #TODO: 这里要对标签数据进行分类处理，得到rainClass
-            rainClass = rain
+            rainClass = torch.Tensor().to(self.device)
+            for j in range(rain.shape[0]):
+                if rain == -99999:
+                    #TODO: 怎么处理-99999？
+                    rainClass = torch.concat((rainClass, torch.Tensor([0, 0]).to(self.device)))
+                elif rain < 0.1:
+                    rainClass = torch.concat((rainClass, torch.Tensor([1, 0]).to(self.device)))
+                else:
+                    rainClass = torch.concat((rainClass, torch.Tensor([0, 1]).to(self.device)))
+
             rainNumpy = rainClass.numpy()
             gt_micaps = rain.numpy
             with torch.no_grad():
                 #三个网络分别的输出
                 reconstructValues = self.prediction(input, isOrdinal=False)
-                predictValues = self.prediction(input, isOrdinal=True)
-                rainPreds = self.confidence(input)
+                predictValues = self.prediction(input, isOrdinal=True)  #(N, 4==#classes)
+                rainPreds = self.confidence(input)  #(N, 2)
 
                 #得到confidence网络的预测oneHot，是否下雨，还有个普通regressionPredict的方法预测是否下雨，暂时没用
                 rainPredsSoftMax = F.softmax(rainPreds, dim=1)
@@ -93,13 +103,16 @@ class Validate(nn.Module):
                     self.device)
 
                 #需要修改：看ordinal网络的输出
+                #TODO: 应该已经改过了？但我觉得不应该用0.5，因为这个应该是间隔？
+                #但感觉regressionValue的具体数值并不重要，只要分类对了就行
                 regressionValues = 0.5 * (torch.sum(
-                    (predictValues > 0.5).float(), dim=1).view(-1, 1))
+                    (predictValues > 0.5).float(), dim=1).view(-1, 1)) #(N, 1)
                 zeros = torch.zeros(regressionValues.size()).to(self.device)
 
                 # 将confidence网络的预测进行mask，得到最终的输出
+                #TODO: 感觉这种算法不对啊，除非rainOnehot是(N, 1, 2)，否则得不到(N,1,1)，但我觉得是(N,2)
                 regressionValues = torch.matmul(
-                    rainOnehot,
+                    rainOnehot, #(N, 2)
                     torch.cat([zeros, regressionValues],
                               dim=1).unsqueeze(-1)).squeeze(-1)
 
@@ -143,6 +156,7 @@ class Validate(nn.Module):
 
                 # 这里不知道输出的是啥,p_ae是一个gt中有降水（>0.05的区域）的点的值为预测差距值的array
                 # p_error是有降水的点预测差的和
+                #TODO: 看起来应该是某些指标，具体公式可以后面再问问
                 p_ae = (gt_micaps > 0.05) * gapValues
                 p_error += np.sum(p_ae)
                 ps_error += np.sum(p_ae**2)
@@ -155,16 +169,29 @@ class Validate(nn.Module):
                     pxErrorList[i] += np.sum(ae)
                     pxsErrorList[i] += np.sum(ae**2)
                     pxCountList[i] += np.sum(one_hot_mask[:, i])'''
+                #TODO: 感觉这里可以改改，直接用序回归出的分类来算，而不用预测出的具体降水值;
+                # 如果觉得不太合理就改回去吧
 
+                # for i, threas in enumerate(tsthreas):
+                #     tp[i] += np.sum(
+                #         (gt_micaps >= threas) * (predictNumpy >= threas))
+                #     tn[i] += np.sum(
+                #         (gt_micaps < threas) * (predictNumpy < threas))
+                #     fp[i] += np.sum(
+                #         (gt_micaps < threas) * (predictNumpy >= threas))
+                #     fn[i] += np.sum(
+                #         (gt_micaps >= threas) * (predictNumpy < threas))
+                threshold_for_probability = 0.5
+                predictValues_numpy = predictValues.cpu().numpy()
                 for i, threas in enumerate(tsthreas):
                     tp[i] += np.sum(
-                        (gt_micaps >= threas) * (predictNumpy >= threas))
+                        (gt_micaps >= threas) * (predictValues_numpy[:, i] >= threshold_for_probability))
                     tn[i] += np.sum(
-                        (gt_micaps < threas) * (predictNumpy < threas))
+                        (gt_micaps < threas) * (predictValues_numpy[:, i] < threshold_for_probability))
                     fp[i] += np.sum(
-                        (gt_micaps < threas) * (predictNumpy >= threas))
+                        (gt_micaps < threas) * (predictValues_numpy[:, i] >= threshold_for_probability))
                     fn[i] += np.sum(
-                        (gt_micaps >= threas) * (predictNumpy < threas))
+                        (gt_micaps >= threas) * (predictValues_numpy[:, i] < threshold_for_probability))
 
         #计算TS,四舍五入保留5位小数
         for i, _ in enumerate(tsthreas):
@@ -176,6 +203,32 @@ class Validate(nn.Module):
         totalAverageError = round(total_error / total_count, 5)
         pAverageError = round(p_error / p_count, 5)
         psAverageError = round(ps_error / p_count - pAverageError**2, 5)
+
+        """---------------- Total Loss for validation ----------------"""
+        totalLoss = np.mean(totalRegressionLoss)
+        totalRLoss = np.mean(totalReconstructLoss)
+
+        """---------------- Total rainAccuracy, non-rainAccuracy and totalAccuracy for validation ----------------"""
+        for i in range(2):
+            rainAccuracy[i] += round(rainCorrect[i] / rainCount[i], 5)
+        rainAccuracy[2] += round(sum(rainCorrect) / sum(rainCount), 5)
+
+        # save TS Scores to list[(_,_,_,_,_)]
+        tsDisplay = list(zip(tp, tn, fp, fn, ts))
+
+        """---------------- print validation info ----------------"""
+        info = {"test_regression_loss": totalLoss,
+                "test_reconstruct_loss": totalRLoss,
+                "aver_gap": totalAverageError,
+                "aver_p_gap": pAverageError,
+                "aver_ps_gap": psAverageError,
+                "p_num": p_count,
+                "ts_score": tsDisplay,
+                "test_rain_classification_accuracy": rainAccuracy,
+                }
+        print("========================== Epoch {} Test Result Show ==========================".format(self.epoch + 1))
+        print(info)
+
 
     #生成将所有的-99999变成0,其他为1的mask
     def get_mask(self, x):
