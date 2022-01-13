@@ -6,6 +6,7 @@ import numpy as np
 from net.encoder import Encoder
 from net.decoder import Decoder
 from net.confidence import confidenceNetwork
+from net.focal import FocalLoss
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
@@ -44,7 +45,7 @@ class ConfidenceTrainer(nn.Module):
     def confidence_train(self,
                          epoch=5,
                          lr=0.0001,
-                         save_path='checkpoint/confidence2.pth'):
+                         save_path='checkpoint/confidence.pth'):
         optimizer = torch.optim.Adam(self.confidence.parameters(), lr)
         #self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=1000,gamma=0.1)
         tb_log_intv = 100
@@ -52,29 +53,26 @@ class ConfidenceTrainer(nn.Module):
         evaluate_loss = 99999
         for step in range(epoch):
             losses = []
+            print('epoch: {step}')
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, rain, temp = iter
+                input, rain, temp, time = iter
                 #原本是double的，但网络参数是float，不改输入的话，就得在网络参数上手动改（较为麻烦）
                 input = input.type(torch.FloatTensor).to(self.device)
-                rain = rain.type(torch.FloatTensor).to(self.device)
-                rain = rain[:, 8:61, 8:65]  #这个地方不要还得再算算，边界判断！
-                y_hat = self.confidence(input)
-                rain = self.zero_mask(rain)
-                y = torch.zeros_like(y_hat).to(self.device)
-                for j in range(rain.shape[0]):
-                    #print(torch.sum(rain[j]))
-                    if torch.sum(rain[j]) > 302.1:
-                        y[j] = torch.Tensor((0, 1))
-                    else:
-                        y[j] = torch.Tensor((1, 0))
-                #print(y_hat, y_hat.shape)
 
+                if rain == -99999:
+                    continue
+                elif rain < 0.1:
+                    y = torch.Tensor([1, 0]).to(self.device)
+                else:
+                    y = torch.Tensor([0, 1]).to(self.device)
+
+                y_hat = self.confidence(input)
                 y_hat = F.softmax(y_hat, dim=1)
                 #y_hat.requires_grad = True
                 #print("y: ", y.shape, y_hat.shape,F.softmax(y_hat, dim=1).shape)
                 optimizer.zero_grad()
                 #loss = self.BCEloss(y_hat, y)
-                loss = nn.MSELoss()(y_hat, y)
+                loss = self.FocalLoss(y_hat, y)
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -91,37 +89,36 @@ class ConfidenceTrainer(nn.Module):
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
-            if step % 50 == 0 and step != 0:
+            #每个epoch都save
+            if step % 1 == 0:
                 temp_evaluate_loss = self.confidence_evaluate()
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
                     torch.save(self.confidence.state_dict(), save_path)
 
         self.writer.flush()
-        torch.save(self.confidence.state_dict(), save_path)
+        #torch.save(self.confidence.state_dict(), save_path)
         return
 
     def confidence_evaluate(self):
-        self.confidence.eval()
         total_steps = 0
         losses = []
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             input, rain, temp = iter
             input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device)
-            rain = rain[:, 8:61, 8:65]  #这个地方还得再算算，边界判断！
+            if rain == -99999:
+                continue
+            elif rain < 0.1:
+                y = torch.Tensor([1, 0]).to(self.device)
+            else:
+                y = torch.Tensor([0, 1]).to(self.device)
+
             y_hat = self.confidence(input)
-            rain = self.zero_mask(rain)
-            y = torch.zeros_like(y_hat).to(self.device)
-            for j in range(rain.shape[0]):
-                #print(torch.sum(rain[j]))
-                if torch.sum(rain[j]) > 302.1:
-                    y[j] = torch.Tensor((0, 1))
-                else:
-                    y[j] = torch.Tensor((1, 0))
+            y_hat = F.softmax(y_hat, dim=1)
+
             with torch.no_grad():
                 y_hat = F.softmax(y_hat, dim=1)
-                loss = nn.MSELoss()(y_hat, y)
+                loss = self.FocalLoss(y_hat, y)
                 total_steps += 1
                 losses.append(loss.item())
         print(
@@ -133,6 +130,10 @@ class ConfidenceTrainer(nn.Module):
 
     def BCEloss(self, x, target, reduction='mean'):
         return nn.BCELoss(reduction=reduction)(x, target)
+
+    def FocalLoss(self, x, target):
+        focal = FocalLoss(2, alpha=0.25, gamma=2).to(self.device)
+        return focal(x, target)
 
     #将所有的-99999变成0
     def zero_mask(self, x):

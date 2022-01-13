@@ -8,13 +8,12 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from net.OrdinalFocalLoss import ordinalLoss
 
-
 writer = SummaryWriter()
 
 
-class CombinatorialTrainer(nn.Module):
+class ODRCombinatorialTrainer(nn.Module):
     def __init__(self, combinatorial_args, data_iter, device):
-        super(CombinatorialTrainer, self).__init__()
+        super(ODRCombinatorialTrainer, self).__init__()
         self.net = CombinatorialNet(
             combinatorial_args['encoder']['in_channels'],
             combinatorial_args['encoder']['mid_channels'],
@@ -31,7 +30,7 @@ class CombinatorialTrainer(nn.Module):
         self.device = device
 
         #self.threshold = torch.tensor([20.0, 10.0, 3.0, 0.1]).to(device=device)
-        self.threshold = torch.tensor([0.1, 3.0, 10.0, 20.0]).to(device = device)
+        self.threshold = torch.tensor([0.1, 3.0, 10.0, 20.0]).to(device=device)
 
     def init_params(self):
         for param in self.net.parameters():
@@ -111,9 +110,10 @@ class CombinatorialTrainer(nn.Module):
             for i, iter in enumerate(tqdm(self.data_iter)):
                 [input, rain, _] = iter
                 input = input.type(torch.FloatTensor).to(self.device)
-                rain = rain.type(torch.FloatTensor).to(self.device) #rain：(N, 1)
+                rain = rain.type(torch.FloatTensor).to(
+                    self.device)  #rain：(N, 1)
                 torch.set_printoptions(profile="full")
-                y_hat = self.net(input, isOrdinal=True) #y_hat is (N, 4)
+                y_hat = self.net(input, isOrdinal=True)  #y_hat is (N, 4)
 
             #先算出目标
             y = torch.zeros((rain.shape[0], self.threshold.shape[0]))
@@ -131,7 +131,6 @@ class CombinatorialTrainer(nn.Module):
 
             optimizer.zero_grad()
 
-
             loss = ordinalLoss(y_hat, y)
             loss.backward()
             optimizer.step()
@@ -139,13 +138,13 @@ class CombinatorialTrainer(nn.Module):
             losses.append(loss.item())
             self.writer.add_scalar("iter_Loss",
                                    loss.item(),
-                                   global_step = total_steps)
+                                   global_step=total_steps)
 
             print('epoch_loss:{}'.format(np.mean(losses[-993:])))
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
-                                   global_step = step)
+                                   global_step=step)
             if step % 50 == 0 and step != 0:
                 temp_evaluate_loss = self.combinatorial_evaluate()
                 if temp_evaluate_loss < evaluate_loss:

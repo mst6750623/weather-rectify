@@ -53,10 +53,10 @@ class CombinatorialTrainer(nn.Module):
         return self.net(x)
 
     def encoder_train(self,
-                      epoch=500,
+                      epoch=100,
                       lr=0.1,
-                      save_path1='checkpoint/encoder3.pth',
-                      save_path2='checkpoint/decoder3.pth'):
+                      save_path1='checkpoint/encoder.pth',
+                      save_path2='checkpoint/decoder.pth'):
         optimizer = torch.optim.Adam(
             list(self.net.encoder.parameters()) +
             list(self.net.decoder.parameters()), lr)
@@ -66,10 +66,12 @@ class CombinatorialTrainer(nn.Module):
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
+
         for step in range(epoch):
             losses = []
+            print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, _, _ = iter
+                input, _, _, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 torch.set_printoptions(profile="full")
 
@@ -91,25 +93,24 @@ class CombinatorialTrainer(nn.Module):
                     avgl = np.mean(losses[-tb_log_intv:])
                     print("iter_Loss:", avgl)'''
 
-                #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999
-            print('epoch_loss:{}'.format(np.mean(losses[-993:])))
+                #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
-            if step % 50 == 0 and step != 0:
+            #每个epoch都save
+            if step % 1 == 0:
                 temp_evaluate_loss = self.combinatorial_evaluate()
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
                     torch.save(self.net.encoder.state_dict(), save_path1)
                     torch.save(self.net.decoder.state_dict(), save_path2)
         self.writer.flush()
-        torch.save(self.net.encoder.state_dict(), save_path1)
-        torch.save(self.net.decoder.state_dict(), save_path2)
+        #torch.save(self.net.encoder.state_dict(), save_path1)
+        #torch.save(self.net.decoder.state_dict(), save_path2)
         return
 
     def combinatorial_evaluate(self):
-        self.net.eval()
         total_steps = 0
         losses = []
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
