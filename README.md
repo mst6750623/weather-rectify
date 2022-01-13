@@ -15,6 +15,7 @@ Code for weather rectify competition
 - 加入时间监督信息，即加一个额外分类器层预测是几点的降水/气温！！及其重要！
 - 一个人调loss一个人调模型
 - 试试图网络
+- （试过图网络后）有余力的话可以试试可形变卷积
 
 
 ## The correlation matrices between the features are as follows:
