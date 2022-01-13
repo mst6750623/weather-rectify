@@ -7,14 +7,14 @@ class confidenceNetwork(nn.Module):
     def __init__(self, ):
         super(confidenceNetwork, self).__init__()
 
-        self.conv = nn.Sequential(BasicConv2d(58, 64, 3, bn=True, padding=1),
+        self.conv = nn.Sequential(BasicConv2d(22, 64, 3, bn=True, padding=1),
                                   BasicConv2d(64, 64, 3, bn=True, padding=1),
                                   BasicConv2d(64, 128, 3, bn=True, padding=1),
                                   BasicConv2d(128, 128, 3, bn=True, padding=1))
         ##TODO 感觉这里input_channel是不是没改啊 ##
         ###REPO 确实没改###
         self.downsample = nn.Sequential(
-            BasicConv2d(58, 128, 1, bn=True, padding=0))
+            BasicConv2d(22, 128, 1, bn=True, padding=0))
 
         # to be continue
 

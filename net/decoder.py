@@ -12,11 +12,13 @@ class Decoder(nn.Module):
                                   3,
                                   bn=True,
                                   padding=1)
-        self.upsample = nn.Upsample(size=(69, 73), mode='bilinear')
+        self.upsample = nn.Upsample(size=(17, 17), mode='bilinear')
         self.layer2 = nn.Sequential(
             BasicConv2d(mid_channels, mid_channels, 3, bn=True, padding=1),
-            BasicConv2d(mid_channels, out_channels, 3, bn=True, padding=1),
+            #BasicConv2d(mid_channels, out_channels, 3, bn=True, padding=1),
             ##经过实验，这里最后一层得加个padding才能还原为58*69*73，不加padding就是58*67*71
+            ##我sb了，之前参数写错了,应该用1*1 conv
+            BasicConv2d(mid_channels, out_channels, 1, bn = True)
         )
 
     def forward(self, x):
@@ -24,3 +26,9 @@ class Decoder(nn.Module):
         x = self.upsample(x)
         x = self.layer2(x)
         return x
+
+
+if __name__ == '__main__':
+    x = torch.rand((8, 64, 8, 8))
+    dec = Decoder(64, 32, 22)
+    print(dec(x).shape)
