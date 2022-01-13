@@ -12,14 +12,16 @@ def read_file(file):
 
 
 #TODO:
-#改成对范围内每个站点的dataset
+#改成对范围内每个站点的dataset :tick
 #增加时间监督信息
 # start_time分成8类[0,3,6,9,12,15,18,21]
 class gridNewDataset(data.Dataset):
     def __init__(self, data_path, isTrain=True, isFirstTime=False):
         time_class = [0, 3, 6, 9, 12, 15, 18, 21]
-        self.mean = torch.load('processed_data/mean.pth').numpy()
-        self.std = torch.load('processed_data/std.pth').numpy()
+        self.mean = torch.load(
+            '/mnt/pami23/stma/weather/processed_data/mean.pth').numpy()
+        self.std = torch.load(
+            '/mnt/pami23/stma/weather/processed_data/std.pth').numpy()
         self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         if isFirstTime:
             # 在这边只扫一遍文件名
@@ -54,13 +56,19 @@ class gridNewDataset(data.Dataset):
                     start_time += 3
                     if start_time >= 24:
                         start_time -= 24
-            np.save('processed_data/newInputFile.npy', self.inputfile)
-            np.save('processed_data/newRainFile.npy', self.rainfile)
-            np.save('processed_data/newTempFile.npy', self.tempfile)
+            np.save('/mnt/pami23/stma/weather/processed_data/newInputFile.npy',
+                    self.inputfile)
+            np.save('/mnt/pami23/stma/weather/processed_data/newRainFile.npy',
+                    self.rainfile)
+            np.save('/mnt/pami23/stma/weather/processed_data/newTempFile.npy',
+                    self.tempfile)
         else:
-            self.inputfile = np.load('processed_data/newInputFile.npy')
-            self.rainfile = np.load('processed_data/newRainFile.npy')
-            self.tempfile = np.load('processed_data/newTempFile.npy')
+            self.inputfile = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newInputFile.npy')
+            self.rainfile = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newRainFile.npy')
+            self.tempfile = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newTempFile.npy')
         self.length = 0
         self.input = []
         self.rain = []
@@ -85,21 +93,29 @@ class gridNewDataset(data.Dataset):
                         self.time.append(time_classification)
                         self.length += 1'''
             #由于数据量过于大了，我们只存17646个总体文件
-            np.save('processed_data/newInput.npy', self.input)
-            np.save('processed_data/newRain.npy', self.rain)
-            np.save('processed_data/newTemp.npy', self.temp)
-            np.save('processed_data/newTime.npy', self.time)
+            np.save('/mnt/pami23/stma/weather/processed_data/newInput.npy',
+                    self.input)
+            np.save('/mnt/pami23/stma/weather/processed_data/newRain.npy',
+                    self.rain)
+            np.save('/mnt/pami23/stma/weather/processed_data/newTemp.npy',
+                    self.temp)
+            np.save('/mnt/pami23/stma/weather/processed_data/newTime.npy',
+                    self.time)
         else:
             #self.input = np.load('processed_data/newInput.npy')
 
             print('loading input!')
-            self.input = np.load('processed_data/newInput.npy')
+            self.input = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newInput.npy')
             print('loading rain!')
-            self.rain = np.load('processed_data/newRain.npy')
+            self.rain = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newRain.npy')
             print('loading temp!')
-            self.temp = np.load('processed_data/newTemp.npy')
+            self.temp = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newTemp.npy')
             print('loading time!')
-            self.time = np.load('processed_data/newTime.npy')
+            self.time = np.load(
+                '/mnt/pami23/stma/weather/processed_data/newTime.npy')
         total_len = self.input.shape[0] * 53 * 57
         train_len = int(0.9 * total_len)
         if isTrain:
