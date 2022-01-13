@@ -48,6 +48,7 @@ class gridNewDataset(data.Dataset):
                             input_file_name) or not os.path.isfile(
                                 rain_file_name) or not os.path.isfile(
                                     temp_file_name):
+                        start_time += 3
                         continue
                     time_classification = time_class.index(start_time)
                     self.inputfile.append([input_file_name, 0])
@@ -74,6 +75,8 @@ class gridNewDataset(data.Dataset):
         self.rain = []
         self.temp = []
         self.time = []
+        print("file len:", len(self.inputfile), len(self.rainfile),
+              len(self.tempfile))
         if isFirstTime:
             for idx, [filename, _] in enumerate(tqdm(self.inputfile)):
                 input_list = self.get_input_list(filename)
@@ -118,19 +121,22 @@ class gridNewDataset(data.Dataset):
                 '/mnt/pami23/stma/weather/processed_data/newTime.npy')
         total_len = self.input.shape[0] * 53 * 57
         train_len = int(0.9 * total_len)
+        file_len = len(self.inputfile)
+        train_file_len = int(0.9 * file_len)
         if isTrain:
-            self.input = self.input[:train_len]
-            self.rain = self.rain[:train_len]
-            self.temp = self.temp[:train_len]
-            self.time = self.time[:train_len]
+            self.input = self.input[:train_file_len]
+            self.rain = self.rain[:train_file_len]
+            self.temp = self.temp[:train_file_len]
+            self.time = self.time[:train_file_len]
             self.length = train_len
         else:
-            self.input = self.input[train_len:]
-            self.rain = self.rain[train_len:]
-            self.temp = self.temp[train_len:]
-            self.time = self.time[train_len:]
+            self.input = self.input[train_file_len:]
+            self.rain = self.rain[train_file_len:]
+            self.temp = self.temp[train_file_len:]
+            self.time = self.time[train_file_len:]
             self.length = total_len - train_len
         print('length:', self.length)
+        print(len(self.input))
 
     def get_input_list(self, input_file_name):
         input = open_dataset(input_file_name)
@@ -166,7 +172,6 @@ class gridNewDataset(data.Dataset):
         #53*57=3021
         real_id = int(idx / 3021)
         inner_id = int(idx % 3021)
-        print(real_id, inner_id)
         total_input = torch.from_numpy(self.input[real_id])
         total_rain = torch.from_numpy(self.rain[real_id])
         total_temp = torch.from_numpy(self.temp[real_id])
@@ -174,7 +179,7 @@ class gridNewDataset(data.Dataset):
 
         i = int(inner_id / 57) + 8
         j = int(inner_id % 57) + 8
-        input = total_input[i - 8:i + 8, j - 8:j + 8]
+        input = total_input[:, i - 8:i + 9, j - 8:j + 9]
         rain = total_rain[i, j]
         temp = total_temp[i, j]
 
@@ -215,4 +220,4 @@ if __name__ == "__main__":
     torch.save(mean, 'processed_data/mean.pth')
     torch.save(std, 'processed_data/std.pth')'''
     input, rain, temp, time = dataset.__getitem__(523465)
-    print(input, rain, temp, time)
+    print(input.shape, rain, temp, time)

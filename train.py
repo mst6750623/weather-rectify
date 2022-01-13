@@ -45,7 +45,7 @@ def main():
                             shuffle=True,
                             pin_memory=True)
     evaluate_iter = DataLoader(evaluate_dataset,
-                               batch_size=1,
+                               batch_size=8,
                                shuffle=False,
                                pin_memory=True)
 
@@ -72,7 +72,7 @@ def main():
         if opts.model == 'confidence':
             trainer = ConfidenceTrainer(train_iter, evaluate_iter, device,
                                         opts.modelname).to(device)
-            trainer.confidence_train(epoch=1000,
+            trainer.confidence_train(epoch=10,
                                      lr=0.0001,
                                      save_path='checkpoint/confidence.pth')
         elif opts.model == 'encoder':
