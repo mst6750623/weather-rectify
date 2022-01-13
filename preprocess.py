@@ -148,7 +148,10 @@ def read_file(file):
 
 
 if __name__ == "__main__":
-    main()
+    #main()
     #get_all_correlation('')
-    #lbl_all = np.load('correlation.npy')
+    lbl_all = np.load('correlation.npy')
     #heat_map_plot(lbl_all)
+    torch.set_printoptions(profile="full")
+    lbl_sum = np.sum(lbl_all, axis=1)
+    print(lbl_sum[0:45])

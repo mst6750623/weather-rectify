@@ -63,6 +63,7 @@ class gridDataset(data.Dataset):
 
         self.mean = torch.load('processed_data/mean.pth').numpy()
         self.std = torch.load('processed_data/std.pth').numpy()
+        self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         print("length:", self.length)
 
     def __len__(self):
@@ -90,8 +91,9 @@ class gridDataset(data.Dataset):
                 values = np.transpose(values, (2, 0, 1))
                 for num in range(values.shape[0]):
                     #temp_list.append(values[num].flatten().tolist())
-                    temp_list.append(
-                        (values[num] - self.mean[i]) / self.std[i].tolist())
+                    if i in self.needed:
+                        temp_list.append((values[num] - self.mean[i]) /
+                                         self.std[i].tolist())
                     i += 1
             else:
                 #temp_list.append(values.flatten().tolist())
