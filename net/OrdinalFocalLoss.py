@@ -38,3 +38,10 @@ class ordinalLoss(nn.Module):
 
         EMD_loss = torch.sum((x_cumsum - y_cumsum) ** 2)
         return ce, EMD_loss
+
+
+if __name__ == '__main__':
+    input = torch.rand((8, 4))
+    target = torch.rand((8, 4))
+    OD = ordinalLoss()
+    print(OD(input, target))
