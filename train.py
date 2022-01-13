@@ -45,7 +45,7 @@ def main():
                             shuffle=True,
                             pin_memory=True)
     evaluate_iter = DataLoader(evaluate_dataset,
-                               batch_size=8,
+                               batch_size=32,
                                shuffle=False,
                                pin_memory=True)
 
@@ -72,15 +72,15 @@ def main():
         if opts.model == 'confidence':
             trainer = ConfidenceTrainer(train_iter, evaluate_iter, device,
                                         opts.modelname).to(device)
-            trainer.confidence_train(epoch=10,
-                                     lr=0.0001,
-                                     save_path='checkpoint/confidence.pth')
+            trainer.confidence_train(epoch=2,
+                                     lr=1e-4,
+                                     save_path='checkpoint/confidence2.pth')
         elif opts.model == 'encoder':
             trainer = CombinatorialTrainer(config['combinatotorial'],
                                            train_iter, evaluate_iter, device,
                                            opts.modelname).to(device)
-            trainer.encoder_train(epoch=1000,
-                                  lr=0.1,
+            trainer.encoder_train(epoch=2,
+                                  lr=1e-2,
                                   save_path1='checkpoint/encoder.pth',
                                   save_path2='checkpoint/decoder.pth')
         elif opts.model == 'odr':
@@ -88,9 +88,10 @@ def main():
                                               train_iter, evaluate_iter,
                                               device,
                                               opts.modelname).to(device)
-            trainer.odr_train(epoch=100,
-                              lr=0.0001,
-                              save_path1='checkpoint/encoder.pth',
+            trainer.odr_train(epoch=1,
+                              lr=1e-3,
+                              encoder_path='checkpoint/encoder.pth',
+                              save_path1='checkpoint/encoderwithodr.pth',
                               save_path2='checkpoint/odr.pth')
         else:
             print('There is no correlated model!')

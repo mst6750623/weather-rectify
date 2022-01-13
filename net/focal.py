@@ -76,6 +76,7 @@ class FocalLoss(nn.Module):
             one_hot_key = one_hot_key.to(logit.device)
 
         # the possibility for specific classifier(only save GT-classifier) [N × 1]
+
         pt = (one_hot_key * logit).sum(1) + epsilon
         # log pt
         logpt = pt.log()

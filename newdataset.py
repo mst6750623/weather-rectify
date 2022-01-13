@@ -119,10 +119,11 @@ class gridNewDataset(data.Dataset):
             print('loading time!')
             self.time = np.load(
                 '/mnt/pami23/stma/weather/processed_data/newTime.npy')
-        total_len = self.input.shape[0] * 53 * 57
-        train_len = int(0.9 * total_len)
+
         file_len = len(self.inputfile)
         train_file_len = int(0.9 * file_len)
+        total_len = file_len * 53 * 57
+        train_len = train_file_len * 53 * 57
         if isTrain:
             self.input = self.input[:train_file_len]
             self.rain = self.rain[:train_file_len]
@@ -219,5 +220,5 @@ if __name__ == "__main__":
     print(mean, std)
     torch.save(mean, 'processed_data/mean.pth')
     torch.save(std, 'processed_data/std.pth')'''
-    input, rain, temp, time = dataset.__getitem__(523465)
+    input, rain, temp, time = dataset.__getitem__(47976500)
     print(input.shape, rain, temp, time)

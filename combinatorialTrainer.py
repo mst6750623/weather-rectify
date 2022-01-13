@@ -61,8 +61,8 @@ class CombinatorialTrainer(nn.Module):
             list(self.net.encoder.parameters()) +
             list(self.net.decoder.parameters()), lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=179000,
-                                                         gamma=0.1)
+                                                         step_size=500000,
+                                                         gamma=0.5)
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
@@ -86,13 +86,20 @@ class CombinatorialTrainer(nn.Module):
                 optimizer.step()
                 total_steps += 1
                 losses.append(loss.item())
-                self.writer.add_scalar("iter_Loss",
-                                       loss.item(),
-                                       global_step=total_steps)
-                '''if i % tb_log_intv == 0 and i != 0:
-                    avgl = np.mean(losses[-tb_log_intv:])
-                    print("iter_Loss:", avgl)'''
 
+                if i % tb_log_intv == 0 and i != 0:
+                    avgl = np.mean(losses[-tb_log_intv:])
+                    #print("iter_Loss:", avgl)
+                    self.writer.add_scalar("iter_Loss",
+                                           loss.item(),
+                                           global_step=total_steps)
+                if i % 500000 == 0 and i != 0:
+                    temp_evaluate_loss = self.combinatorial_evaluate()
+                    if temp_evaluate_loss < evaluate_loss:
+                        evaluate_loss = temp_evaluate_loss
+                        torch.save(self.net.encoder.state_dict(), save_path1)
+                        torch.save(self.net.decoder.state_dict(), save_path2)
+                    self.net.train()
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
@@ -105,6 +112,7 @@ class CombinatorialTrainer(nn.Module):
                     evaluate_loss = temp_evaluate_loss
                     torch.save(self.net.encoder.state_dict(), save_path1)
                     torch.save(self.net.decoder.state_dict(), save_path2)
+                self.net.train()
         self.writer.flush()
         #torch.save(self.net.encoder.state_dict(), save_path1)
         #torch.save(self.net.decoder.state_dict(), save_path2)
@@ -113,9 +121,10 @@ class CombinatorialTrainer(nn.Module):
     def combinatorial_evaluate(self):
         total_steps = 0
         losses = []
+        self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, rain, temp = iter
+                input, rain, temp, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 y_hat = self.net(input, isOrdinal=False)
                 mask = self.get_mask(input)

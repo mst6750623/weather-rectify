@@ -11,7 +11,7 @@ class Encoder(nn.Module):
                  out_channels=64,
                  mean=0,
                  std=1e-1,
-                 training=True):
+                 training=False):
         super(Encoder, self).__init__()
 
         ###args for Gaussian####
