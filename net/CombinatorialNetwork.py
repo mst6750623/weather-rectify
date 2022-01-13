@@ -36,7 +36,9 @@ class CombinatorialNet(nn.Module):
 
 
 if __name__ == '__main__':
-    x = torch.randn((8, 58, 69, 73))
-    net = CombinatorialNet(58, 32, 64, 128, 32, 32, 58, 5)  ##4类好像就够了吧？
+    x = torch.randn((8, 22, 17, 17))
+    net = CombinatorialNet(22, 32, 64, 128, 32, 32, 22, 4)  ##4类好像就够了吧？
+    ret_for_dec = net(x, False)
+    print(ret_for_dec.shape)
     ret_for_od = net(x, True)
     print(ret_for_od.shape)
