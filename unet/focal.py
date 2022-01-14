@@ -4,11 +4,10 @@ from torch.nn import functional as F
 """-------  Ordinal Focal Loss -------"""
 
 
-class ordinalLoss(nn.Module):
-    ###TODO: 这space到底干啥的？好像是个整数…… 但好像不写在这里也行
-    #def __init__(self, space):
+class FocalLoss(nn.Module):
+
     def __init__(self):
-        super(ordinalLoss, self).__init__()
+        super(FocalLoss, self).__init__()
         """------- term added to improve numerical stability -------"""
         self.epilson = 1e-10
         self.gamma = 2
@@ -19,7 +18,6 @@ class ordinalLoss(nn.Module):
 
         gamma = self.gamma
         ##  Mean Focal Loss with CE
-        ##这里和文章中除了负号以外公式也有不同，不过至少都是loss越小越好
         ce = -(torch.sum(
             torch.pow((1 - x), gamma) * torch.log(x + self.epilson).mul(y) +
             torch.pow(x, gamma) *
@@ -39,7 +37,7 @@ class ordinalLoss(nn.Module):
 
 
 if __name__ == '__main__':
-    input = torch.rand((8, 4))
-    target = torch.rand((8, 4))
-    OD = ordinalLoss()
+    input = torch.rand((8, 4, 69, 73))
+    target = torch.rand((8, 4, 69, 73))
+    OD = FocallLoss()
     print(OD(input, target))

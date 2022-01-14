@@ -132,6 +132,7 @@ class ODRCombinatorialTrainer(nn.Module):
                 y_hat = self.net(input, isOrdinal=True)  #y_hat is (N, 4)
 
                 #先算出目标
+                #TODO: -99999怎么处理?
                 y = torch.zeros(
                     (rain.shape[0], self.threshold.shape[0])).to('cuda')
                 for j in range(rain.shape[0]):
