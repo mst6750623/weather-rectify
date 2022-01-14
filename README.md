@@ -9,6 +9,7 @@ Code for weather rectify competition
 - [ ] 跑测试集！
 - [ ] 重新构建一个最简单的8层3*3卷积
 - [ ] 加分支分类器预测时间（已做好dataloader返回）
+- [ ] 搞清楚那个把序回归转为具体降水值的公式！
 - validate.py里有几个TODO是我想不明白的问题，有空看看TAT
 
  
