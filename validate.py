@@ -3,9 +3,12 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 import os
+import yaml
+from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 from net.CombinatorialNetwork import CombinatorialNet
 from net.confidence import confidenceNetwork
+from newdataset import gridNewDataset
 
 
 #注意，这是validate，不是最终生成的test
@@ -26,7 +29,7 @@ class Validate(nn.Module):
             noise_std=1e-1)
         self.data_iter = data_iter
         self.device = device
-        self.nClass = combinatorial_args['nClass']
+        self.nClass = combinatorial_args['nclass']
 
     def initialize(self, confidence_path, encoder_path, decoder_path,
                    ordinal_path):
@@ -74,48 +77,70 @@ class Validate(nn.Module):
         rainCount = [0] * 2
         rainAccuracy = [0] * 3
 
-        for i, iter in enumerate(tqdm(self.data_iter), desc="validating: "):
-            input, rain, temp = iter
+        for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
+            input, rain, temp, time = iter
             input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device) #(N, 1)
+            rain = rain.type(torch.FloatTensor).to(self.device)  #(N, 1)
+            temp = temp.type(torch.FloatTensor).to(self.device)
+            print('label:', rain, temp)
             #TODO: 这里要对标签数据进行分类处理，得到rainClass
             rainClass = torch.Tensor().to(self.device)
+            rainClass_1dim = torch.Tensor().to(self.device)
             for j in range(rain.shape[0]):
-                if rain == -99999:
+                print(rain[j])
+                if rain[j] == -99999:
                     #TODO: 怎么处理-99999？
-                    rainClass = torch.concat((rainClass, torch.Tensor([0, 0]).to(self.device)))
-                elif rain < 0.1:
-                    rainClass = torch.concat((rainClass, torch.Tensor([1, 0]).to(self.device)))
+                    rainClass = torch.concat(
+                        (rainClass, torch.Tensor([0, 0]).to(self.device)))
+                    rainClass_1dim = torch.concat(
+                        (rainClass_1dim, torch.Tensor([0]).to(self.device)))
+                elif rain[j] < 0.1:
+                    rainClass = torch.concat(
+                        (rainClass, torch.Tensor([1, 0]).to(self.device)))
+                    rainClass_1dim = torch.concat(
+                        (rainClass_1dim, torch.Tensor([0]).to(self.device)))
                 else:
-                    rainClass = torch.concat((rainClass, torch.Tensor([0, 1]).to(self.device)))
-
-            rainNumpy = rainClass.numpy()
-            gt_micaps = rain.numpy
+                    rainClass = torch.concat(
+                        (rainClass, torch.Tensor([0, 1]).to(self.device)))
+                    rainClass_1dim = torch.concat(
+                        (rainClass_1dim, torch.Tensor([1]).to(self.device)))
+            rainClass = rainClass.view(rain.shape[0], -1)
+            print('rainClass:', rainClass, rainClass_1dim)
+            rainNumpy = rainClass_1dim.cpu().numpy()
+            gt_micaps = rain.cpu().numpy()
             with torch.no_grad():
                 #三个网络分别的输出
                 reconstructValues = self.prediction(input, isOrdinal=False)
-                predictValues = self.prediction(input, isOrdinal=True)  #(N, 4==#classes)
+                predictValues = self.prediction(
+                    input, isOrdinal=True)  #(N, 4==#classes)
                 rainPreds = self.confidence(input)  #(N, 2)
+                print('output ', predictValues, rainPreds)
 
                 #得到confidence网络的预测oneHot，是否下雨，还有个普通regressionPredict的方法预测是否下雨，暂时没用
                 rainPredsSoftMax = F.softmax(rainPreds, dim=1)
                 rainOnehot = self.generateOneHot(rainPredsSoftMax).to(
                     self.device)
-
+                print('rainOnehot: ', rainOnehot, rainOnehot.shape)
                 #需要修改：看ordinal网络的输出
                 #TODO: 应该已经改过了？但我觉得不应该用0.5，因为这个应该是间隔？
                 #但感觉regressionValue的具体数值并不重要，只要分类对了就行
+                #REPO: 我也觉得这个0.5可以不用乘
                 regressionValues = 0.5 * (torch.sum(
-                    (predictValues > 0.5).float(), dim=1).view(-1, 1)) #(N, 1)
+                    (predictValues > 0.5).float(), dim=1).view(-1, 1))  #(N, 1)
                 zeros = torch.zeros(regressionValues.size()).to(self.device)
+                print('regression:', regressionValues, regressionValues.shape)
+                print('zeros:', zeros, zeros.shape)
 
                 # 将confidence网络的预测进行mask，得到最终的输出
                 #TODO: 感觉这种算法不对啊，除非rainOnehot是(N, 1, 2)，否则得不到(N,1,1)，但我觉得是(N,2)
+                #REPO: 实验下来，rainOnehot是(N,2),后一项是（N,2,1），乘出来是(N,N,1)[matmul的特性，后一项多出的第一维会作为batch，剩余二维部分做矩阵乘法]
                 regressionValues = torch.matmul(
-                    rainOnehot, #(N, 2)
-                    torch.cat([zeros, regressionValues],
+                    rainOnehot,  #(N, 2)
+                    torch.cat((zeros, regressionValues),
                               dim=1).unsqueeze(-1)).squeeze(-1)
 
+                print('regression new:', regressionValues,
+                      regressionValues.shape)
                 #regressionValues = regressionValues.item()
                 #计算重建损失和预测与标签的损失
                 regressionLoss = nn.MSELoss()(regressionValues, rain)
@@ -125,6 +150,8 @@ class Validate(nn.Module):
                 #计算confidence损失
                 rainClassificationLoss = nn.CrossEntropyLoss()(rainPreds,
                                                                rainClass)
+                print('losses: ', regressionLoss, reconstructLoss,
+                      rainClassificationLoss)
 
                 #更新三个损失的总体list
                 totalRegressionLoss.append(regressionLoss.item())
@@ -142,6 +169,7 @@ class Validate(nn.Module):
                 #计算confidence预测准确的个数
                 rainPredicted = torch.argmax(rainPredsSoftMax,
                                              dim=1).cpu().numpy()
+                print('rainPredicted', rainPredicted)
                 for i in range(2):
                     rainCorrect[i] += np.sum(
                         (rainPredicted == i) * (rainNumpy == i))
@@ -185,14 +213,18 @@ class Validate(nn.Module):
                 predictValues_numpy = predictValues.cpu().numpy()
                 for i, threas in enumerate(tsthreas):
                     tp[i] += np.sum(
-                        (gt_micaps >= threas) * (predictValues_numpy[:, i] >= threshold_for_probability))
+                        (gt_micaps >= threas) * (predictValues_numpy[:, i] >=
+                                                 threshold_for_probability))
                     tn[i] += np.sum(
-                        (gt_micaps < threas) * (predictValues_numpy[:, i] < threshold_for_probability))
+                        (gt_micaps < threas) * (predictValues_numpy[:, i] <
+                                                threshold_for_probability))
                     fp[i] += np.sum(
-                        (gt_micaps < threas) * (predictValues_numpy[:, i] >= threshold_for_probability))
+                        (gt_micaps < threas) * (predictValues_numpy[:, i] >=
+                                                threshold_for_probability))
                     fn[i] += np.sum(
-                        (gt_micaps >= threas) * (predictValues_numpy[:, i] < threshold_for_probability))
-
+                        (gt_micaps >= threas) * (predictValues_numpy[:, i] <
+                                                 threshold_for_probability))
+                print('finals:', tp, tn, fp, fn)
         #计算TS,四舍五入保留5位小数
         for i, _ in enumerate(tsthreas):
             ts[i] += round(tp[i] / (tp[i] + fp[i] + fn[i]), 5)
@@ -203,11 +235,9 @@ class Validate(nn.Module):
         totalAverageError = round(total_error / total_count, 5)
         pAverageError = round(p_error / p_count, 5)
         psAverageError = round(ps_error / p_count - pAverageError**2, 5)
-
         """---------------- Total Loss for validation ----------------"""
         totalLoss = np.mean(totalRegressionLoss)
         totalRLoss = np.mean(totalReconstructLoss)
-
         """---------------- Total rainAccuracy, non-rainAccuracy and totalAccuracy for validation ----------------"""
         for i in range(2):
             rainAccuracy[i] += round(rainCorrect[i] / rainCount[i], 5)
@@ -215,20 +245,21 @@ class Validate(nn.Module):
 
         # save TS Scores to list[(_,_,_,_,_)]
         tsDisplay = list(zip(tp, tn, fp, fn, ts))
-
         """---------------- print validation info ----------------"""
-        info = {"test_regression_loss": totalLoss,
-                "test_reconstruct_loss": totalRLoss,
-                "aver_gap": totalAverageError,
-                "aver_p_gap": pAverageError,
-                "aver_ps_gap": psAverageError,
-                "p_num": p_count,
-                "ts_score": tsDisplay,
-                "test_rain_classification_accuracy": rainAccuracy,
-                }
-        print("========================== Epoch {} Test Result Show ==========================".format(self.epoch + 1))
+        info = {
+            "test_regression_loss": totalLoss,
+            "test_reconstruct_loss": totalRLoss,
+            "aver_gap": totalAverageError,
+            "aver_p_gap": pAverageError,
+            "aver_ps_gap": psAverageError,
+            "p_num": p_count,
+            "ts_score": tsDisplay,
+            "test_rain_classification_accuracy": rainAccuracy,
+        }
+        print(
+            "========================== Epoch {} Test Result Show =========================="
+            .format(self.epoch + 1))
         print(info)
-
 
     #生成将所有的-99999变成0,其他为1的mask
     def get_mask(self, x):
@@ -245,3 +276,21 @@ class Validate(nn.Module):
         oneHotMask = oneHotMask.scatter_(1, maxIdxs, 1.0)
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
+
+
+if __name__ == '__main__':
+    config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
+    evaluate_dataset = gridNewDataset(config['train_dir'],
+                                      isTrain=False,
+                                      isFirstTime=False)
+
+    evaluate_iter = DataLoader(evaluate_dataset,
+                               batch_size=8,
+                               shuffle=True,
+                               pin_memory=True)
+    device = 'cuda'
+    validate = Validate(config['combinatotorial'], evaluate_iter,
+                        device).to(device)
+    validate.initialize('checkpoint/confidence2.pth', 'checkpoint/encoder.pth',
+                        'checkpoint/decoder.pth', 'checkpoint/odr.pth')
+    validate.forward()
