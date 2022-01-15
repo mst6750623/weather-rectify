@@ -122,14 +122,21 @@ class UNetTrainer(nn.Module):
         self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, rain, temp, _ = iter
+                input, rain, temp = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 y_hat = self.net(input)
-                mask = self.get_mask(input)
+                mask = self.get_mask(rain) #对rain求mask
                 #TODO：那个将序回归换算回具体数值的公式
                 #对应于学长代码ordinalTrainer.py第237行
-                predict_rain_value = regression_value(y_hat)
-                loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
+                # predict_rain_value = regression_value(y_hat)
+                # loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
+                y = torch.zeros_like(y_hat).to('cuda')
+                for k in range(self.threshold.shape[0]):
+                    # if rain[j] > self.threshold[k]:
+                    #     y[j][k] = 1
+                    y[:, k] = rain > self.threshold[k]
+                #loss暂时先用focalloss代替一下
+                FocalLoss()(y_hat, y, mask)
                 #感觉loss最好要按照没mask掉的数量平均一下
                 loss = loss / torch.sum(mask)
                 total_steps += 1
