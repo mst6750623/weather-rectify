@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from basic_conv import BasicConv2d
-from net_parts import *
+from .basic_conv import BasicConv2d
+from .net_parts import *
 
 
 class ConvUNet(nn.Module):

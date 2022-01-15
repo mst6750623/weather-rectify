@@ -1,12 +1,7 @@
-import torch
-import os
 import argparse
-import numpy as np
 import yaml
-import torch.utils.data as data
-from tqdm import tqdm
 from torch.utils.data.dataloader import DataLoader
-from newdataset import gridNewDataset
+from dataset import gridDataset
 from unetTrainer import UNetTrainer
 
 parser = argparse.ArgumentParser()
@@ -31,10 +26,10 @@ def main():
     device = 'cuda'
     epoch = config['epoch']
 
-    train_dataset = gridNewDataset(config['train_dir'],
+    train_dataset = gridDataset(config['train_dir'],
                                    isTrain=True,
                                    isFirstTime=False)
-    evaluate_dataset = gridNewDataset(config['train_dir'],
+    evaluate_dataset = gridDataset(config['train_dir'],
                                       isTrain=False,
                                       isFirstTime=False)
     train_iter = DataLoader(train_dataset,

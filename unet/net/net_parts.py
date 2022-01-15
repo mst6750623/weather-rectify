@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from basic_conv import BasicConv2d
+from .basic_conv import BasicConv2d
 
 class Conv2times(nn.Module):
     def __init__(self,

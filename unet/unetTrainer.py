@@ -1,15 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import os
 import numpy as np
-from unet.conv_unet import ConvUNet
-from unet.focal import FocalLoss
+from net.conv_unet import ConvUNet
+from net.focal import FocalLoss
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data.dataloader import DataLoader
-from dataset import gridDataset
-import yaml
+
 
 def regression_value(self, x):
     # to be continued
@@ -64,7 +60,7 @@ class UNetTrainer(nn.Module):
             losses = []
             print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, rain, _, _ = iter
+                input, rain, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(
                     self.device)
@@ -81,7 +77,7 @@ class UNetTrainer(nn.Module):
                     y[:, k] = rain > self.threshold[k]
 
                 with torch.no_grad():
-                    mask = self.get_mask(input)
+                    mask = self.get_mask(rain) #对rain求mask！
 
                 optimizer.zero_grad()
                 ce, _ = FocalLoss()(y_hat, y, mask)
