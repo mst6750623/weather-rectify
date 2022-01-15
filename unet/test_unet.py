@@ -5,50 +5,33 @@ import numpy as np
 import torch.nn.functional as F
 from tqdm import tqdm
 from xarray import open_dataset
-from net.CombinatorialNetwork import CombinatorialNet
-from net.confidence import confidenceNetwork
-from newdataset import gridNewDataset
+from net.conv_unet import ConvUNet
+from dataset import gridDataset
 
 
 class Test():
-    def __init__(self, combinatorial_args, device):
+    def __init__(self, args, device):
         self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         self.tsthreas = [0.1, 3, 10, 20]
         self.mean = torch.load(
             '/mnt/pami23/stma/weather/processed_data/mean.pth').numpy()
         self.std = torch.load(
             '/mnt/pami23/stma/weather/processed_data/std.pth').numpy()
-        self.confidence = confidenceNetwork().to(device)
-        self.prediction = CombinatorialNet(
-            combinatorial_args['encoder']['in_channels'],
-            combinatorial_args['encoder']['mid_channels'],
-            combinatorial_args['encoder']['out_channels'],
-            combinatorial_args['ordinal']['mid_channels'],
-            combinatorial_args['ordinal']['out_channels'],
-            combinatorial_args['decoder']['mid_channels'],
-            combinatorial_args['decoder']['out_channels'],
-            combinatorial_args['nclass'],
-            noise_mean=0,
-            noise_std=1e-1).to(device)
-        self.device = device
-        self.nClass = combinatorial_args['nclass']
 
-    def initialize(self, confidence_path, encoder_path, decoder_path,
-                   ordinal_path):
-        confidence_ckpt = torch.load(confidence_path)
-        encoder_ckpt = torch.load(encoder_path)
-        decoder_ckpt = torch.load(decoder_path)
-        ordinal_ckpt = torch.load(ordinal_path)
-        self.confidence.load_state_dict(confidence_ckpt)
-        self.confidence.eval()
-        self.prediction.encoder.load_state_dict(encoder_ckpt)
-        self.prediction.decoder.load_state_dict(decoder_ckpt)
-        self.prediction.OD.load_state_dict(ordinal_ckpt)
-        self.prediction.eval()
+        self.device = device
+
+        self.net = ConvUNet(args['in_channels'], args['n_classes']).to(device)
+
+    def initialize(self, unet_path):
+        unet_ckpt = torch.load(unet_path)
+
+        self.net.load_state_dict(unet_ckpt)
+        self.net.eval()
 
     def test(self):
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
+        #记得改掉！
         out_path = '/mnt/pami23/stma/weather/output/0115/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
@@ -71,8 +54,10 @@ class Test():
                 input_list = torch.from_numpy(input_list).to(self.device)
 
                 idx = 0
+                prediction = self.net(input_list).to(self.device)
                 out_file_name = os.path.join(
                     write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
+
                 with open(
                         out_file_name, 'w'
                 ) as f:  # 如果filename不存在会自动创建， 'w'表示写数据，写之前会清空文件中的原有数据！
@@ -81,25 +66,19 @@ class Test():
                         line = line.strip().split()
                         row, col = line
                         row, col = int(row), int(col)
-                        #print(row, col)
-                        temp_input = input_list[:, row - 8:row + 9,
-                                                col - 8:col + 9].unsqueeze(0)
-                        #print(temp_input.shape)
-                        confidence_result = self.confidence(temp_input)
-                        ordinal_results = self.prediction(temp_input,
-                                                          isOrdinal=True)
 
-                        ordinal_results = ordinal_results[0]
+                        point_predicion = prediction[row][col]
+                        print(point_predicion.shape)
 
-                        if ordinal_results[0] < 0.5:
+                        if point_predicion[0] < 0.5:
                             prediction = 0
-                        elif ordinal_results[0] > 0.5 and ordinal_results[
+                        elif point_predicion[0] > 0.5 and point_predicion[
                                 1] < 0.5:
                             prediction = 0.1
-                        elif ordinal_results[1] > 0.5 and ordinal_results[
+                        elif point_predicion[1] > 0.5 and point_predicion[
                                 2] < 0.5:
                             prediction = 3
-                        elif ordinal_results[2] > 0.5 and ordinal_results[
+                        elif point_predicion[2] > 0.5 and point_predicion[
                                 3] < 0.5:
                             prediction = 10
                         else:
@@ -177,9 +156,6 @@ class Test():
 if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
-    test = Test(config['combinatotorial'], device)
-    #test.test()
-    test.initialize('checkpoint/confidence2.pth',
-                    'checkpoint/encoderwithodr2.pth', 'checkpoint/decoder.pth',
-                    'checkpoint/odr2.pth')
+    test = Test(config['unet'], device)
+    test.initialize('checkpoint/unet.pth')
     test.test()
