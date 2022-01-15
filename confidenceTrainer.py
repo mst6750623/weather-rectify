@@ -62,17 +62,27 @@ class ConfidenceTrainer(nn.Module):
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(self.device)
 
-                y_hat = self.confidence(input)
-                y = torch.zeros((y_hat.shape[0], 1)).to(self.device)
+                able_list = []
+                y = torch.Tensor().to(self.device)
                 for j in range(rain.shape[0]):
                     #print(torch.sum(rain[j]))
-                    if rain[j] == -99999:
-                        continue
-                    elif rain[j] < 0.1:
-                        y[j] = torch.Tensor([0])
+                    if rain[j] >= 0.1:
+                        y = torch.concat(
+                            (y, torch.Tensor([1]).to(self.device)))
+                        able_list.append(j)
                     else:
-                        y[j] = torch.Tensor([1])
+                        # 重采样5%几率采样
+                        if torch.rand(1) > 0.95:
+                            y = torch.concat(
+                                (y, torch.Tensor([0]).to(self.device)))
+                            able_list.append(j)
+                able_list = torch.Tensor(able_list).int().to(self.device)
 
+                input = torch.index_select(input, dim=0, index=able_list)
+                #print(input.shape)
+                if input.shape[0] == 0:
+                    continue
+                y_hat = self.confidence(input)
                 y_hat = F.softmax(y_hat, dim=1)
                 #y_hat.requires_grad = True
                 #print("y: ", y.shape, y_hat.shape,F.softmax(y_hat, dim=1).shape)

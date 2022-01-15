@@ -13,6 +13,7 @@ from newdataset import gridNewDataset
 class Test():
     def __init__(self, combinatorial_args, device):
         self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
+        self.tsthreas = [0.1, 3, 10, 20]
         self.mean = torch.load(
             '/mnt/pami23/stma/weather/processed_data/mean.pth').numpy()
         self.std = torch.load(
@@ -49,7 +50,7 @@ class Test():
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
         out_path = '/mnt/pami23/stma/weather/output/0114/'
-        for i in tqdm(range(6, 400, 1)):
+        for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
             write_dir_name = os.path.join(out_path,
@@ -92,6 +93,7 @@ class Test():
                         rainOnehot = self.generateOneHot(rainPredsSoftMax).to(
                             self.device)
                         ordinal_results = ordinal_results[0]
+
                         if ordinal_results[0] < 0.5:
                             prediction = 0
                         elif ordinal_results[0] > 0.5 and ordinal_results[
@@ -105,9 +107,7 @@ class Test():
                             prediction = 10
                         else:
                             prediction = 20
-                        f.write(
-                            str(row) + ' ' + str(col) + ' ' + str(prediction) +
-                            '\n')
+                        f.write(str(prediction) + '\n')
                     f.close()
 
     def get_input_list(self, input_file_name):
@@ -143,9 +143,45 @@ class Test():
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
 
+    def updateFile(self):
+        out_path = '/mnt/pami23/stma/weather/output/0114/'
+        new_path = '/mnt/pami23/stma/weather/output/0114new/'
+        for i in tqdm(range(400)):
+            new_dir_name = os.path.join(new_path,
+                                        'example' + '{:0>5d}'.format(i + 1))
+            write_dir_name = os.path.join(out_path,
+                                          'example' + '{:0>5d}'.format(i + 1))
+            if not os.path.exists(new_dir_name):
+                os.mkdir(new_dir_name)
+            for j in range(9):
+
+                out_file_name = os.path.join(
+                    write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
+
+                if not os.path.exists(out_file_name):
+                    continue
+
+                new_file_name = os.path.join(
+                    new_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
+                with open(
+                        new_file_name, 'w'
+                ) as f:  # 如果filename不存在会自动创建， 'w'表示写数据，写之前会清空文件中的原有数据！
+
+                    for line in open(out_file_name):
+                        line = line.strip().split()
+                        row, col, pred = line
+
+                        #print(row, col, pred)
+
+                        f.write(str(pred) + '\n')
+                    f.close()
+
 
 if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     test = Test(config['combinatotorial'], device)
-    test.test()
+    #test.test()
+    test.initialize('checkpoint/confidence2.pth', 'checkpoint/encoder.pth',
+                    'checkpoint/decoder.pth', 'checkpoint/odr.pth')
+    test.updateFile()

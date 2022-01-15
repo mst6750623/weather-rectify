@@ -129,7 +129,6 @@ class CombinatorialTrainer(nn.Module):
                 y_hat = self.net(input, isOrdinal=False)
                 mask = self.get_mask(input)
 
-                y_hat = F.softmax(y_hat, dim=1)
                 loss = nn.MSELoss()(y_hat * mask, input * mask)
                 total_steps += 1
                 losses.append(loss.item())

@@ -89,10 +89,10 @@ def main():
                                               device,
                                               opts.modelname).to(device)
             trainer.odr_train(epoch=1,
-                              lr=1e-4,
+                              lr=1e-6,
                               encoder_path='checkpoint/encoder.pth',
-                              save_path1='checkpoint/encoderwithodr2.pth',
-                              save_path2='checkpoint/odr2.pth')
+                              save_path1='checkpoint/encoderwithodr3.pth',
+                              save_path2='checkpoint/odr3.pth')
         else:
             print('There is no correlated model!')
         #trainer.confidence_train()

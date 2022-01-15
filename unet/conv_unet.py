@@ -13,8 +13,8 @@ class ConvUNet(nn.Module):
         self.bilinear = bilinear
 
         ##后续可以改结构，但必须保证：
-            #down和up对称
-            #down的in_channels与out_channels之间必须是2倍关系
+        #down和up对称
+        #down的in_channels与out_channels之间必须是2倍关系
         self.in_conv = Conv2times(in_channels, 64, 3, 1)
 
         self.down1 = Downsample(2, 64, 128, 3, 1)

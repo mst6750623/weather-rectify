@@ -5,9 +5,9 @@ Code for weather rectify competition
 ## TODO: 
 - [ ] 训练三个网络
 - [x] ordinal网络trainer构建
-- [ ] validate模块构建
+- [x] validate模块构建
 - [ ] 跑测试集！
-- [ ] 重新构建一个最简单的8层3*3卷积
+- [ ] 重新构建一个最简单的UNET
 - [ ] 加分支分类器预测时间（已做好dataloader返回）
 - [ ] 搞清楚那个把序回归转为具体降水值的公式！
 - validate.py里有几个TODO是我想不明白的问题，有空看看TAT
@@ -27,6 +27,8 @@ confidence lr=1e-4  100k降
 encoder lr=1e-2 500k降
 ODR 无预训练 lr=1e-3 50k降
 
+## 验证记录
+onfidence2.pth, encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
 
 ## The correlation matrices between the features are as follows:
 ![](corrMatrix.jpg)

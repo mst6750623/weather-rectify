@@ -34,7 +34,7 @@ class ODRCombinatorialTrainer(nn.Module):
         self.device = device
         self.writer = SummaryWriter(comment=writer)
         self.alpha = 1
-        self.beta = 10
+        self.beta = 1
         #self.threshold = torch.tensor([20.0, 10.0, 3.0, 0.1]).to(device=device)
         self.threshold = torch.tensor([0.1, 3.0, 10.0, 20.0]).to(device=device)
 
@@ -88,13 +88,15 @@ class ODRCombinatorialTrainer(nn.Module):
                 if i % tb_log_intv == 0 and i != 0:
                     avgl = np.mean(losses[-tb_log_intv:])
                     print("iter_Loss:", avgl)
-                    writer.add_scalar("iter_Loss",
-                                      avgl,
-                                      global_step=total_steps)
+                    self.writer.add_scalar("iter_Loss",
+                                           avgl,
+                                           global_step=total_steps)
 
             print('total_loss:{}'.format(np.mean(losses)))
-            writer.add_scalar("epoch_Loss", np.mean(losses), global_step=step)
-        writer.flush()
+            self.writer.add_scalar("epoch_Loss",
+                                   np.mean(losses),
+                                   global_step=step)
+        self.writer.flush()
         torch.save(self.net.encoder.state_dict(), save_path1)
         torch.save(self.net.decoder.state_dict(), save_path2)
         return
@@ -129,15 +131,39 @@ class ODRCombinatorialTrainer(nn.Module):
                 rain = rain.type(torch.FloatTensor).to(
                     self.device)  #rain：(N, 1)
                 torch.set_printoptions(profile="full")
+
+                able_list = []
+                rain_resample = torch.Tensor().to(self.device)
+                for j in range(rain.shape[0]):
+                    #print(torch.sum(rain[j]))
+                    if rain[j] >= 0.1:
+                        rain_resample = torch.concat(
+                            (rain_resample, torch.Tensor([rain[j]
+                                                          ]).to(self.device)))
+                        able_list.append(j)
+                    else:
+                        # 重采样5%几率采样
+                        if torch.rand(1) > 0.95:
+                            rain_resample = torch.concat(
+                                (rain_resample,
+                                 torch.Tensor([0]).to(self.device)))
+                            able_list.append(j)
+                able_list = torch.Tensor(able_list).int().to(self.device)
+
+                input = torch.index_select(input, dim=0, index=able_list)
+                if input.shape[0] == 0:
+                    continue
                 y_hat = self.net(input, isOrdinal=True)  #y_hat is (N, 4)
 
                 #先算出目标
                 #TODO: -99999怎么处理? 改focal, 等待unet验证是否可行……
-                y = torch.zeros(
-                    (rain.shape[0], self.threshold.shape[0])).to('cuda')
-                for j in range(rain.shape[0]):
+                #REPO:现在先按0处理
+                y = torch.zeros((rain_resample.shape[0],
+                                 self.threshold.shape[0])).to(self.device)
+
+                for j in range(rain_resample.shape[0]):
                     for k in range(self.threshold.shape[0]):
-                        if rain[j] > self.threshold[k]:
+                        if rain_resample[j] > self.threshold[k]:
                             y[j][k] = 1
                         else:
                             break
@@ -150,6 +176,7 @@ class ODRCombinatorialTrainer(nn.Module):
                 optimizer.zero_grad()
 
                 ce, emd = ordinalLoss()(y_hat, y)
+                #print(ce, emd)
                 loss = self.alpha * ce + self.beta * emd
                 loss.backward()
                 optimizer.step()
