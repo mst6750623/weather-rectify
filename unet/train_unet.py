@@ -54,8 +54,8 @@ def main():
             trainer = UNetTrainer(config['unet'],
                                            train_iter, evaluate_iter, device,
                                            opts.modelname).to(device)
-            trainer.unet_train(epoch=2,
-                                  lr=1e-2,
+            trainer.unet_train(epoch=config['epoch'],
+                                  lr=1e-6,
                                   save_path='checkpoint/unet.pth')
         else:
             print('There is no correlated model!')

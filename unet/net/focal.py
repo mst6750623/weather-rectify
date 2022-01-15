@@ -28,7 +28,15 @@ class FocalLoss(nn.Module):
                 * torch.log(x + self.epilson).mul(y) +
                 torch.pow(x, gamma)
                 * torch.log(1 - x + self.epilson).mul(1 - y), dim=1))) / batchSize
-
+        # print('a:', torch.pow((1 - x), gamma)
+        #         * torch.log(x + self.epilson).mul(y))
+        # print('b:', torch.pow(x, gamma)
+        #         * torch.log(1 - x + self.epilson).mul(1 - y))
+        # # print('c:', torch.sum(
+        # #         torch.pow((1 - x), gamma)
+        # #         * torch.log(x + self.epilson).mul(y) +
+        # #         torch.pow(x, gamma)
+        # #         * torch.log(1 - x + self.epilson).mul(1 - y), dim=1))
         # cal histogram distribution for all x
         x_soft = F.softmax(x, dim=1)
         # cal histogram distribution for all y

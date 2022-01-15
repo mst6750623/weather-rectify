@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .basic_conv import BasicConv2d
+
 from .net_parts import *
 
 
@@ -41,7 +41,10 @@ class ConvUNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
 
-        return self.out_conv(x)
+        x = self.out_conv(x)
+
+        #要用sigmoid转换为概率！
+        return torch.sigmoid(x)
 
 
 if __name__ == '__main__':

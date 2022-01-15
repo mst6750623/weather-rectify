@@ -49,9 +49,9 @@ class UNetTrainer(nn.Module):
                       lr=0.1,
                       save_path='checkpoint/unet.pth'):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=500000,
-                                                         gamma=0.5)
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+        #                                                  step_size=500000,
+        #                                                  gamma=0.5)
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
@@ -124,19 +124,21 @@ class UNetTrainer(nn.Module):
             with torch.no_grad():
                 input, rain, temp = iter
                 input = input.type(torch.FloatTensor).to(self.device)
+                rain = rain.type(torch.FloatTensor).to(self.device)
                 y_hat = self.net(input)
                 mask = self.get_mask(rain) #对rain求mask
                 #TODO：那个将序回归换算回具体数值的公式
                 #对应于学长代码ordinalTrainer.py第237行
                 # predict_rain_value = regression_value(y_hat)
                 # loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
-                y = torch.zeros_like(y_hat).to('cuda')
+
+                y = torch.zeros_like(y_hat).to(self.device)
                 for k in range(self.threshold.shape[0]):
                     # if rain[j] > self.threshold[k]:
                     #     y[j][k] = 1
                     y[:, k] = rain > self.threshold[k]
                 #loss暂时先用focalloss代替一下
-                FocalLoss()(y_hat, y, mask)
+                loss, _ = FocalLoss()(y_hat, y, mask)
                 #感觉loss最好要按照没mask掉的数量平均一下
                 loss = loss / torch.sum(mask)
                 total_steps += 1
