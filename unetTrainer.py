@@ -85,7 +85,7 @@ class UNetTrainer(nn.Module):
 
                 optimizer.zero_grad()
                 ce, _ = FocalLoss()(y_hat, y, mask)
-                loss = ce #就不用ce和emd的加权了
+                loss = ce #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -135,6 +135,7 @@ class UNetTrainer(nn.Module):
                 predict_rain_value = regression_value(y_hat)
                 loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
                 #感觉loss最好要按照没mask掉的数量平均一下
+                loss = loss / torch.sum(mask)
                 total_steps += 1
                 losses.append(loss.item())
         print(

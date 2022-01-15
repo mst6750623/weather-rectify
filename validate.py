@@ -197,7 +197,7 @@ class Validate(nn.Module):
                     pxErrorList[i] += np.sum(ae)
                     pxsErrorList[i] += np.sum(ae**2)
                     pxCountList[i] += np.sum(one_hot_mask[:, i])'''
-                #TODO: 感觉这里可以改改，直接用序回归出的分类来算，而不用预测出的具体降水值;
+                #TODO: 改成了直接用序回归出的分类来算，而不用预测出的具体降水值;
                 # 如果觉得不太合理就改回去吧
 
                 # for i, threas in enumerate(tsthreas):
