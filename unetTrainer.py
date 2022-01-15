@@ -11,6 +11,9 @@ from torch.utils.data.dataloader import DataLoader
 from dataset import gridDataset
 import yaml
 
+def regression_value(self, x):
+    # to be continued
+    return None
 
 class UNetTrainer(nn.Module):
     def __init__(self,
@@ -64,25 +67,25 @@ class UNetTrainer(nn.Module):
                 input, rain, _, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(
-                    self.device)  #rain：(N, 1, 69, 73)
+                    self.device)
+                assert len(rain.shape) == 3 #确保rain是(N, 69, 73)
                 torch.set_printoptions(profile="full")
                 y_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
 
                 #先算出目标
-                # TODO: -99999怎么处理?以及这个shape的没想明白怎么搞啊啊啊
+                #TODO: 不确定这样切片有没有错……
                 y = torch.zeros_like(y_hat).to('cuda')
-                for j in range(rain.shape[0]):
-                    for k in range(self.threshold.shape[0]):
-                        if rain[j] > self.threshold[k]:
-                            y[j][k] = 1
-                        else:
-                            break
+                for k in range(self.threshold.shape[0]):
+                    # if rain[j] > self.threshold[k]:
+                    #     y[j][k] = 1
+                    y[:, k] = rain > self.threshold[k]
 
                 with torch.no_grad():
                     mask = self.get_mask(input)
 
                 optimizer.zero_grad()
-                ce, _ = FocalLoss()(y_hat, )
+                ce, _ = FocalLoss()(y_hat, y, mask)
+                loss = ce #就不用ce和emd的加权了
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -95,11 +98,10 @@ class UNetTrainer(nn.Module):
                                            loss.item(),
                                            global_step=total_steps)
                 if i % 500000 == 0 and i != 0:
-                    temp_evaluate_loss = self.combinatorial_evaluate()
+                    temp_evaluate_loss = self.unet_evaluate()
                     if temp_evaluate_loss < evaluate_loss:
                         evaluate_loss = temp_evaluate_loss
-                        torch.save(self.net.encoder.state_dict(), save_path1)
-                        torch.save(self.net.decoder.state_dict(), save_path2)
+                        torch.save(self.net.state_dict(), save_path)
                     self.net.train()
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
             print('total_loss:{}'.format(np.mean(losses)))
@@ -108,18 +110,17 @@ class UNetTrainer(nn.Module):
                                    global_step=step)
             #每个epoch都save
             if step % 1 == 0:
-                temp_evaluate_loss = self.combinatorial_evaluate()
+                temp_evaluate_loss = self.unet_evaluate()
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
-                    torch.save(self.net.encoder.state_dict(), save_path1)
-                    torch.save(self.net.decoder.state_dict(), save_path2)
+                    torch.save(self.net.state_dict(), save_path)
                 self.net.train()
         self.writer.flush()
         #torch.save(self.net.encoder.state_dict(), save_path1)
         #torch.save(self.net.decoder.state_dict(), save_path2)
         return
 
-    def combinatorial_evaluate(self):
+    def unet_evaluate(self):
         total_steps = 0
         losses = []
         self.net.eval()
@@ -127,11 +128,13 @@ class UNetTrainer(nn.Module):
             with torch.no_grad():
                 input, rain, temp, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
-                y_hat = self.net(input, isOrdinal=False)
+                y_hat = self.net(input)
                 mask = self.get_mask(input)
-
-                y_hat = F.softmax(y_hat, dim=1)
-                loss = nn.MSELoss()(y_hat * mask, input * mask)
+                #TODO：那个将序回归换算回具体数值的公式
+                #对应于学长代码ordinalTrainer.py第237行
+                predict_rain_value = regression_value(y_hat)
+                loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
+                #感觉loss最好要按照没mask掉的数量平均一下
                 total_steps += 1
                 losses.append(loss.item())
         print(
@@ -159,6 +162,4 @@ class UNetTrainer(nn.Module):
         oneHotMask = oneHotMask.scatter_(1, maxIdxs, 1.0)
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
-
-
 

@@ -13,15 +13,16 @@ class FocalLoss(nn.Module):
         self.gamma = 2
         #self.space = space
 
-    def forward(self, x, y):
+    def forward(self, x, y, mask):
+        #对于不需要mask的情况，mask为ones_like(x); 否则，-99999的地方为0
         batchSize = x.size(0)
 
         gamma = self.gamma
         ##  Mean Focal Loss with CE
+        #TODO: need checking
         ce = -(torch.sum(
-            torch.pow((1 - x), gamma) * torch.log(x + self.epilson).mul(y) +
-            torch.pow(x, gamma) *
-            torch.log(1 - x + self.epilson).mul(1 - y))) / batchSize
+            mask * torch.pow((1 - x), gamma) * torch.log(x + self.epilson).mul(y) +
+            mask * torch.pow(x, gamma) * torch.log(1 - x + self.epilson).mul(1 - y))) / batchSize
 
         # cal histogram distribution for all x
         x_soft = F.softmax(x, dim=1)
@@ -39,5 +40,6 @@ class FocalLoss(nn.Module):
 if __name__ == '__main__':
     input = torch.rand((8, 4, 69, 73))
     target = torch.rand((8, 4, 69, 73))
-    OD = FocallLoss()
-    print(OD(input, target))
+    OD = FocalLoss()
+    print(OD(input, target, torch.ones_like(input)))
+    print(OD(input, target, torch.zeros_like(input)))

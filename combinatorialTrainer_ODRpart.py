@@ -132,7 +132,7 @@ class ODRCombinatorialTrainer(nn.Module):
                 y_hat = self.net(input, isOrdinal=True)  #y_hat is (N, 4)
 
                 #先算出目标
-                #TODO: -99999怎么处理?
+                #TODO: -99999怎么处理? 改focal, 等待unet验证是否可行……
                 y = torch.zeros(
                     (rain.shape[0], self.threshold.shape[0])).to('cuda')
                 for j in range(rain.shape[0]):
