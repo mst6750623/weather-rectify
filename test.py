@@ -49,7 +49,7 @@ class Test():
     def test(self):
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
-        out_path = '/mnt/pami23/stma/weather/output/0115/'
+        out_path = '/mnt/pami23/stma/weather/output/0116/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
@@ -159,7 +159,7 @@ class Test():
                     continue
 
                 new_file_name = os.path.join(
-                    new_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
+                    new_dir_name, 'Pred_' + '{:0>2d}'.format(j + 1) + '.txt')
                 with open(
                         new_file_name, 'w'
                 ) as f:  # 如果filename不存在会自动创建， 'w'表示写数据，写之前会清空文件中的原有数据！
@@ -180,6 +180,6 @@ if __name__ == "__main__":
     test = Test(config['combinatotorial'], device)
     #test.test()
     test.initialize('checkpoint/confidence2.pth',
-                    'checkpoint/encoderwithodr2.pth', 'checkpoint/decoder.pth',
-                    'checkpoint/odr2.pth')
+                    'checkpoint/encoderwithodr3.pth', 'checkpoint/decoder.pth',
+                    'checkpoint/odr3.pth')
     test.test()

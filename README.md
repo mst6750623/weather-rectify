@@ -3,11 +3,12 @@ Code for weather rectify competition
 
 
 ## TODO: 
-- [ ] 训练三个网络
+- [x] 训练三个网络
 - [x] ordinal网络trainer构建
 - [x] validate模块构建
-- [ ] 跑测试集！
-- [ ] 重新构建一个最简单的UNET
+- [x] 跑测试集！
+- [x] 重新构建一个最简单的UNET
+- [ ] 到底什么是正确的提交格式啊啊啊啊啊啊啊啊啊！
 - [ ] 加分支分类器预测时间（已做好dataloader返回）
 - [ ] 搞清楚那个把序回归转为具体降水值的公式！
 - validate.py里有几个TODO是我想不明白的问题，有空看看TAT
