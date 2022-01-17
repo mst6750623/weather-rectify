@@ -7,21 +7,23 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 
-def regression_value(self, x):
-    # to be continued
-    return None
-
 
 class UNetTrainer(nn.Module):
-    def __init__(self, args, train_iter, evaluate_iter, device, writer='unet'):
+    def __init__(self,
+                 args,
+                 train_iter,
+                 evaluate_iter,
+                 device,
+                 writer='unet'):
         super(UNetTrainer, self).__init__()
-        self.net = ConvUNet(args['in_channels'], args['n_classes'])
-        #self.init_params()
+        self.net = ConvUNet(args['in_channels'],
+                            args['n_classes'])
+        self.init_params()
         self.train_iter = train_iter
         self.evaluate_iter = evaluate_iter
         self.device = device
         self.writer = SummaryWriter(comment=writer)
-        self.threshold = torch.tensor([0.1, 3.0, 10.0, 20.0]).to(device=device)
+
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -44,7 +46,10 @@ class UNetTrainer(nn.Module):
 
         return self.net(x)
 
-    def unet_train(self, epoch, lr, save_path):
+    def unet_train(self,
+                      epoch,
+                      lr,
+                      save_path):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
         #                                                  step_size=500000,
@@ -58,27 +63,25 @@ class UNetTrainer(nn.Module):
             losses = []
             print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, rain, _, _ = iter
+                input, _, temperature = iter
                 input = input.type(torch.FloatTensor).to(self.device)
-                rain = rain.type(torch.FloatTensor).to(self.device)
-                assert len(rain.shape) == 3  #确保rain是(N, 69, 73)
-                torch.set_printoptions(profile="full")
-                y_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
+                temperature = temperature.type(torch.FloatTensor).to(
+                    self.device)  #(N, H, W)
 
-                #先算出目标
-                #TODO: 不确定这样切片有没有错……
-                y = torch.zeros_like(y_hat).to('cuda')
-                for k in range(self.threshold.shape[0]):
-                    # if rain[j] > self.threshold[k]:
-                    #     y[j][k] = 1
-                    y[:, k] = rain > self.threshold[k]
+                batch_size = input.shape[0]
+                assert temperature.shape[0] == batch_size
+
+                torch.set_printoptions(profile="full")
+
+                pred_temperature = self.net(input)  #(N, H, W)
 
                 with torch.no_grad():
-                    mask = self.get_mask(rain)  #对rain求mask！
+                    mask = self.get_mask(temperature)
+                    valid_points = torch.sum(mask)
 
                 optimizer.zero_grad()
-                ce, _ = FocalLoss()(y_hat, y, mask)
-                loss = ce  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
+                loss = nn.L1Loss(reduction='sum')(mask * temperature,
+                                                  mask * pred_temperature) / (batch_size * valid_points)
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -96,26 +99,22 @@ class UNetTrainer(nn.Module):
                         evaluate_loss = temp_evaluate_loss
                         torch.save(self.net.state_dict(), save_path)
                     self.net.train()
-                #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
 
             #每100个epoch存一次
             if step % 100 == 0:
-                torch.save(self.net.state_dict(),
-                           save_path[:-4] + '{}'.format(step) + '.pth')
+                torch.save(self.net.state_dict(), save_path[:-4] + '_{}'.format(step) + '.pth')
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
             #每个epoch都save
-            if step % 1 == 0:
-                temp_evaluate_loss = self.unet_evaluate()
-                if temp_evaluate_loss < evaluate_loss:
-                    evaluate_loss = temp_evaluate_loss
-                    torch.save(self.net.state_dict(), save_path)
-                self.net.train()
+            # if step % 1 == 0:
+            #     temp_evaluate_loss = self.unet_evaluate()
+            #     if temp_evaluate_loss < evaluate_loss:
+            #         evaluate_loss = temp_evaluate_loss
+            #         torch.save(self.net.state_dict(), save_path)
+            #     self.net.train()
         self.writer.flush()
-        #torch.save(self.net.encoder.state_dict(), save_path1)
-        #torch.save(self.net.decoder.state_dict(), save_path2)
         return
 
     def unet_evaluate(self):
@@ -124,31 +123,25 @@ class UNetTrainer(nn.Module):
         self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, rain, temp, _ = iter
+                input, _, temperature = iter
                 input = input.type(torch.FloatTensor).to(self.device)
-                rain = rain.type(torch.FloatTensor).to(self.device)
-                y_hat = self.net(input)
-                mask = self.get_mask(rain)  #对rain求mask
-                #TODO：那个将序回归换算回具体数值的公式
-                #对应于学长代码ordinalTrainer.py第237行
-                # predict_rain_value = regression_value(y_hat)
-                # loss = nn.MSELoss()(predict_rain_value * mask, input * mask)
+                batch_size = temperature.shape[0]
 
-                y = torch.zeros_like(y_hat).to(self.device)
-                for k in range(self.threshold.shape[0]):
-                    # if rain[j] > self.threshold[k]:
-                    #     y[j][k] = 1
-                    y[:, k] = rain > self.threshold[k]
-                #loss暂时先用focalloss代替一下
-                loss, _ = FocalLoss()(y_hat, y, mask)
-                #感觉loss最好要按照没mask掉的数量平均一下
-                loss = loss / torch.sum(mask)
+                temperature = temperature.type(torch.FloatTensor).to(self.device)
+                pred_temperature = self.net(input)
+
+                mask = self.get_mask(temperature)
+                valid_points = torch.sum(mask)
+
+                loss = nn.L1Loss(reduction = 'sum')(mask * temperature,
+                                                    mask * pred_temperature) / (batch_size * valid_points)
+
                 total_steps += 1
                 losses.append(loss.item())
         print(
             'Evaluate total num: ',
             total_steps,
-            " total MSEloss: {:.5f}".format(np.mean(losses)),
+            " total MAEloss: {:.5f}".format(np.mean(losses)),
         )
         return np.mean(losses)
 
@@ -170,3 +163,4 @@ class UNetTrainer(nn.Module):
         oneHotMask = oneHotMask.scatter_(1, maxIdxs, 1.0)
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
+
