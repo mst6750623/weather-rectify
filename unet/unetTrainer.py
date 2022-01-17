@@ -21,12 +21,17 @@ class UNetTrainer(nn.Module):
         super(UNetTrainer, self).__init__()
         self.net = ConvUNet(args['in_channels'],
                             args['n_classes'])
-        self.init_params()
+        #self.init_params()
         self.train_iter = train_iter
         self.evaluate_iter = evaluate_iter
         self.device = device
         self.writer = SummaryWriter(comment=writer)
         self.threshold = torch.tensor([0.1, 3.0, 10.0, 20.0]).to(device=device)
+
+    def initialize(self, checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        self.net.load_state_dict(checkpoint)
+        print('loading:', checkpoint_path)
 
     def init_params(self):
         for param in self.net.parameters():
@@ -45,9 +50,9 @@ class UNetTrainer(nn.Module):
         return self.net(x)
 
     def unet_train(self,
-                      epoch=100,
-                      lr=0.1,
-                      save_path='checkpoint/unet.pth'):
+                      epoch,
+                      lr,
+                      save_path):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
         #                                                  step_size=500000,
@@ -55,7 +60,8 @@ class UNetTrainer(nn.Module):
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
-
+        print('lr:', lr)
+        print('total epoch:', epoch)
         for step in range(epoch):
             losses = []
             print('epoch: ', step)
@@ -100,6 +106,10 @@ class UNetTrainer(nn.Module):
                         torch.save(self.net.state_dict(), save_path)
                     self.net.train()
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
+
+            #每100个epoch存一次
+            if step % 100 == 0:
+                torch.save(self.net.state_dict(), save_path[:-4] + '{}'.format(step) + '.pth')
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
