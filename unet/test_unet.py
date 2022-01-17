@@ -32,7 +32,7 @@ class Test():
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
         #记得改掉！
-        out_path = '/mnt/pami23/stma/weather/output/0117/'
+        out_path = '/mnt/pami23/stma/weather/output/Pred_precipitation/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
@@ -56,7 +56,7 @@ class Test():
                 idx = 0
                 prediction = self.net(input_list).to(self.device)
                 prediction = prediction.squeeze(0).permute(1, 2, 0)
-                print(prediction.shape)
+                #print(prediction.shape)
                 out_file_name = os.path.join(
                     write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
 
@@ -70,7 +70,7 @@ class Test():
                         row, col = int(row), int(col)
 
                         point_predicion = prediction[row][col]
-                        print(point_predicion.shape)
+                        #print(point_predicion.shape)
 
                         if point_predicion[0] < 0.5:
                             prediction_result = 0
@@ -160,5 +160,6 @@ if __name__ == "__main__":
     device = 'cuda'
     test = Test(config['unet'], device)
     test.initialize(
-        '/mnt/pami23/zhengxin/projects/weather/unet/checkpoint/unet_lr06.pth')
+        '/mnt/pami23/zhengxin/projects/weather/unet/checkpoint/unet_lr05400.pth'
+    )
     test.test()

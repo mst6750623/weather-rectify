@@ -72,9 +72,9 @@ def main():
         if opts.model == 'confidence':
             trainer = ConfidenceTrainer(train_iter, evaluate_iter, device,
                                         opts.modelname).to(device)
-            trainer.confidence_train(epoch=2,
-                                     lr=1e-4,
-                                     save_path='checkpoint/confidence2.pth')
+            trainer.confidence_train(epoch=3,
+                                     lr=1e-6,
+                                     save_path='checkpoint/confidence3.pth')
         elif opts.model == 'encoder':
             trainer = CombinatorialTrainer(config['combinatotorial'],
                                            train_iter, evaluate_iter, device,

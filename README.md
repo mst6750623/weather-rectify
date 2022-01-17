@@ -29,7 +29,7 @@ encoder lr=1e-2 500k降
 ODR 无预训练 lr=1e-3 50k降
 
 ## 验证记录
-onfidence2.pth, encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
-
+confidence2.pth(没用), encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
+confidence2.pth(没用), encoderwithodr3.pth, decoder.pth, odr3.pth | ts:0.16698,0.08479,0.00267,0
 ## The correlation matrices between the features are as follows:
 ![](corrMatrix.jpg)
