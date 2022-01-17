@@ -435,7 +435,7 @@ if __name__ == '__main__':
     validate = Validate(config['combinatotorial'], evaluate_iter,
                         device).to(device)
     validate.initialize('checkpoint/confidence2.pth',
-                        'checkpoint/encoderwithodr2.pth',
-                        'checkpoint/decoder.pth', 'checkpoint/odr2.pth')
+                        'checkpoint/encoderwithodr3.pth',
+                        'checkpoint/decoder.pth', 'checkpoint/odr3.pth')
     #validate.forward()
     validate.simple_validate()

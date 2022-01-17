@@ -14,14 +14,20 @@ def read_file(file):
 class gridDataset(data.Dataset):
     def __init__(self, data_path, isTrain=True, isFirstTime=False):
         total_len = 0
+        self.time_class = [0, 3, 6, 9, 12, 15, 18, 21]
         if isFirstTime:
             # 在这边只扫一遍文件名
             self.input = []
             self.rain = []
             self.temp = []
+            self.time = []
             for i in tqdm(range(1962), desc="Scanning dataset files"):
                 file_name = data_path + 'example' + '{:0>5d}'.format(i +
                                                                      1) + '/'
+                #由于是预测12-36小时，所以起始时间+12
+                start_time = 12
+                if os.path.exists(os.path.join(file_name, '12_12-36h')):
+                    start_time = 0
                 for j in range(9):
                     input_file_name = file_name + 'grid_inputs_' + '{:0>2d}'.format(
                         j + 1) + '.nc'
@@ -34,19 +40,34 @@ class gridDataset(data.Dataset):
                             input_file_name) or not os.path.isfile(
                                 rain_file_name) or not os.path.isfile(
                                     temp_file_name):
+                        start_time += 3
                         continue
-
+                    time_classification = self.time_class.index(start_time)
                     self.input.append(input_file_name)
                     self.rain.append(rain_file_name)
                     self.temp.append(temp_file_name)
+                    self.time.append(time_classification)
                     total_len += 1
-            np.save('processed_data/input.npy', self.input)
-            np.save('processed_data/rain.npy', self.rain)
-            np.save('processed_data/temp.npy', self.temp)
+                    start_time += 3
+                    if start_time >= 24:
+                        start_time -= 24
+            np.save('/mnt/pami23/stma/weather/processed_data/input.npy',
+                    self.input)
+            np.save('/mnt/pami23/stma/weather/processed_data/rain.npy',
+                    self.rain)
+            np.save('/mnt/pami23/stma/weather/processed_data/temp.npy',
+                    self.temp)
+            np.save('/mnt/pami23/stma/weather/processed_data/time.npy',
+                    self.time)
         else:
-            self.input = np.load('processed_data/input.npy')
-            self.rain = np.load('processed_data/rain.npy')
-            self.temp = np.load('processed_data/temp.npy')
+            self.input = np.load(
+                '/mnt/pami23/stma/weather/processed_data/input.npy')
+            self.rain = np.load(
+                '/mnt/pami23/stma/weather/processed_data/rain.npy')
+            self.temp = np.load(
+                '/mnt/pami23/stma/weather/processed_data/temp.npy')
+            self.time = np.load(
+                '/mnt/pami23/stma/weather/processed_data/time.npy')
             total_len = self.input.shape[0]
 
         train_len = int(0.9 * total_len)
@@ -54,15 +75,19 @@ class gridDataset(data.Dataset):
             self.input = self.input[:train_len]
             self.rain = self.rain[:train_len]
             self.temp = self.temp[:train_len]
+            self.time = self.time[:train_len]
             self.length = int(0.9 * total_len)
         else:
             self.input = self.input[train_len:]
             self.rain = self.rain[train_len:]
             self.temp = self.temp[train_len:]
+            self.time = self.time[train_len:]
             self.length = int(0.1 * total_len)
 
-        self.mean = torch.load('processed_data/mean.pth').numpy()
-        self.std = torch.load('processed_data/std.pth').numpy()
+        self.mean = torch.load(
+            '/mnt/pami23/stma/weather/processed_data/mean.pth').numpy()
+        self.std = torch.load(
+            '/mnt/pami23/stma/weather/processed_data/std.pth').numpy()
         self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         print("length:", self.length)
 
@@ -106,13 +131,14 @@ class gridDataset(data.Dataset):
         input = torch.from_numpy(input)
         rain = torch.from_numpy(rain_values[0])
         temp = torch.from_numpy(temp_values[0])
-        return input, rain, temp
+        time = self.time[idx]
+        return input, rain, temp, time
 
 
 if __name__ == "__main__":
     dataset = gridDataset("/mnt/pami23/stma/weather/train/",
                           isTrain=True,
-                          isFirstTime=False)
+                          isFirstTime=True)
     '''mean = torch.zeros(58)
     std = torch.zeros(58)
     for idx in tqdm(range(dataset.length)):
@@ -142,5 +168,5 @@ if __name__ == "__main__":
     print(mean, std)
     torch.save(mean, 'processed_data/mean.pth')
     torch.save(std, 'processed_data/std.pth')'''
-    input, rain, temp = dataset.__getitem__(0)
-    print(input.shape, rain.shape, temp.shape)
+    input, rain, temp, time = dataset.__getitem__(784)
+    print(input.shape, rain.shape, temp.shape, time)

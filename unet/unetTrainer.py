@@ -11,16 +11,11 @@ def regression_value(self, x):
     # to be continued
     return None
 
+
 class UNetTrainer(nn.Module):
-    def __init__(self,
-                 args,
-                 train_iter,
-                 evaluate_iter,
-                 device,
-                 writer='unet'):
+    def __init__(self, args, train_iter, evaluate_iter, device, writer='unet'):
         super(UNetTrainer, self).__init__()
-        self.net = ConvUNet(args['in_channels'],
-                            args['n_classes'])
+        self.net = ConvUNet(args['in_channels'], args['n_classes'])
         #self.init_params()
         self.train_iter = train_iter
         self.evaluate_iter = evaluate_iter
@@ -49,10 +44,7 @@ class UNetTrainer(nn.Module):
 
         return self.net(x)
 
-    def unet_train(self,
-                      epoch,
-                      lr,
-                      save_path):
+    def unet_train(self, epoch, lr, save_path):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
         #                                                  step_size=500000,
@@ -66,11 +58,10 @@ class UNetTrainer(nn.Module):
             losses = []
             print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, rain, _ = iter
+                input, rain, _, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
-                rain = rain.type(torch.FloatTensor).to(
-                    self.device)
-                assert len(rain.shape) == 3 #确保rain是(N, 69, 73)
+                rain = rain.type(torch.FloatTensor).to(self.device)
+                assert len(rain.shape) == 3  #确保rain是(N, 69, 73)
                 torch.set_printoptions(profile="full")
                 y_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
 
@@ -83,11 +74,11 @@ class UNetTrainer(nn.Module):
                     y[:, k] = rain > self.threshold[k]
 
                 with torch.no_grad():
-                    mask = self.get_mask(rain) #对rain求mask！
+                    mask = self.get_mask(rain)  #对rain求mask！
 
                 optimizer.zero_grad()
                 ce, _ = FocalLoss()(y_hat, y, mask)
-                loss = ce #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
+                loss = ce  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -109,7 +100,8 @@ class UNetTrainer(nn.Module):
 
             #每100个epoch存一次
             if step % 100 == 0:
-                torch.save(self.net.state_dict(), save_path[:-4] + '{}'.format(step) + '.pth')
+                torch.save(self.net.state_dict(),
+                           save_path[:-4] + '{}'.format(step) + '.pth')
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
@@ -132,11 +124,11 @@ class UNetTrainer(nn.Module):
         self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, rain, temp = iter
+                input, rain, temp, _ = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(self.device)
                 y_hat = self.net(input)
-                mask = self.get_mask(rain) #对rain求mask
+                mask = self.get_mask(rain)  #对rain求mask
                 #TODO：那个将序回归换算回具体数值的公式
                 #对应于学长代码ordinalTrainer.py第237行
                 # predict_rain_value = regression_value(y_hat)
@@ -178,4 +170,3 @@ class UNetTrainer(nn.Module):
         oneHotMask = oneHotMask.scatter_(1, maxIdxs, 1.0)
         #oneHotMask = oneHotMask.unsqueeze(-2)
         return oneHotMask
-
