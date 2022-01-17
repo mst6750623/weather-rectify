@@ -52,7 +52,7 @@ class Test():
                     continue
                 input_list = self.get_input_list(input_file_name)
                 input_list = torch.from_numpy(input_list).to(self.device)
-
+                input_list = input_list.unsqueeze(0)
                 idx = 0
                 prediction = self.net(input_list).to(self.device)
                 out_file_name = os.path.join(
