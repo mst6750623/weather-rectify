@@ -35,19 +35,21 @@ class Validate(nn.Module):
         fn = [0] * len(tsthreas)  # false negetive
         ts = [0] * len(tsthreas)
 
+        total_points = 0
+        invalid_points = 0
 
         for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
             input, rain, _ = iter
             input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device)  #(N, 1)
+            rain = rain.type(torch.FloatTensor).to(self.device) #(N, H, W)
 
             #只算一下TS
             with torch.no_grad():
                 pred_classification_scores = self.unet(input) #scores: (N, 4, H, W)
                 regression_value = None #TODO: 把分类转为具体数值
                 mask = self.get_mask(rain)
-                print(torch.sum(mask))
                 threshold_for_probability = 0.7
+
 
                 for j, threas in enumerate(tsthreas):
                     tp[j] += torch.sum(
@@ -63,10 +65,16 @@ class Validate(nn.Module):
                         (mask * (rain >= threas)) * (pred_classification_scores[:, j] <
                                                  threshold_for_probability))
                 #print('finals:', tp, tn, fp, fn)
+                total_points += rain.shape[0] * rain.shape[1] * rain.shape[2]
+                invalid_points += torch.sum(mask)
         #计算TS（对于整个epoch而言）,四舍五入保留5位小数
+        print('Valid total points: {} - {} = {}'.format(total_points, invalid_points, total_points - invalid_points))
         for j, threas in enumerate(tsthreas):
             ts[j] = tp[j] / (tp[j] + fp[j] + fn[j])
-            print('For x = {}, ts = {}'.format(threas.cpu().numpy(), ts[j]))
+            print('For x = {}, ts = {}, '
+                  'tp = {}, tn = {}, '
+                  'fp = {}, fn = {}'.format(threas.cpu().numpy(), ts[j], tp[j], tn[j], fp[j], fn[j]))
+
 
 
     #生成将所有的-99999变成0,其他为1的mask
