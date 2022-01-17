@@ -32,7 +32,7 @@ class Test():
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
         #记得改掉！
-        out_path = '/mnt/pami23/stma/weather/output/0115/'
+        out_path = '/mnt/pami23/stma/weather/output/0117/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
@@ -55,6 +55,8 @@ class Test():
                 input_list = input_list.unsqueeze(0)
                 idx = 0
                 prediction = self.net(input_list).to(self.device)
+                prediction = prediction.squeeze(0).permute(1, 2, 0)
+                print(prediction.shape)
                 out_file_name = os.path.join(
                     write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
 
@@ -71,19 +73,19 @@ class Test():
                         print(point_predicion.shape)
 
                         if point_predicion[0] < 0.5:
-                            prediction = 0
+                            prediction_result = 0
                         elif point_predicion[0] > 0.5 and point_predicion[
                                 1] < 0.5:
-                            prediction = 0.1
+                            prediction_result = 0.1
                         elif point_predicion[1] > 0.5 and point_predicion[
                                 2] < 0.5:
-                            prediction = 3
+                            prediction_result = 3
                         elif point_predicion[2] > 0.5 and point_predicion[
                                 3] < 0.5:
-                            prediction = 10
+                            prediction_result = 10
                         else:
-                            prediction = 20
-                        f.write(str(prediction) + '\n')
+                            prediction_result = 20
+                        f.write(str(prediction_result) + '\n')
                     f.close()
 
     def get_input_list(self, input_file_name):
@@ -157,5 +159,6 @@ if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     test = Test(config['unet'], device)
-    test.initialize('checkpoint/unet.pth')
+    test.initialize(
+        '/mnt/pami23/zhengxin/projects/weather/unet/checkpoint/unet_lr06.pth')
     test.test()
