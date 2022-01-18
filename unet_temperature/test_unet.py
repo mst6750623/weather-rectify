@@ -8,11 +8,11 @@ from xarray import open_dataset
 from net.conv_unet import ConvUNet
 from dataset import gridDataset
 
-#TODO: to be modified...
+
 class Test():
     def __init__(self, args, device):
         self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
-        self.tsthreas = [0.1, 3, 10, 20]
+
         self.mean = torch.load(
             '/mnt/pami23/stma/weather/processed_data/mean.pth').numpy()
         self.std = torch.load(
@@ -26,13 +26,14 @@ class Test():
         unet_ckpt = torch.load(unet_path)
 
         self.net.load_state_dict(unet_ckpt)
+        print('loading checkpoint:', unet_path)
         self.net.eval()
 
     def test(self):
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
         #记得改掉！
-        out_path = '/mnt/pami23/zhengxin/projects/weather/unet/output/Pred_precipitation/'
+        out_path = '/mnt/pami23/zhengxin/projects/weather/unet_temperature/output/Pred_temperature/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
@@ -50,12 +51,13 @@ class Test():
                 if not os.path.exists(input_file_name) or not os.path.exists(
                         loc_file_name):
                     continue
-                input_list = self.get_input_list(input_file_name)
-                input_list = torch.from_numpy(input_list).to(self.device)
-                input_list = input_list.unsqueeze(0)
-                idx = 0
-                prediction = self.net(input_list).to(self.device)
-                prediction = prediction.squeeze(0).permute(1, 2, 0)
+                with torch.no_grad():
+                    input_list = self.get_input_list(input_file_name)
+                    input_list = torch.from_numpy(input_list).to(self.device)
+                    input_list = input_list.unsqueeze(0)
+                    idx = 0
+                    prediction = self.net(input_list).cpu().numpy()
+                #prediction = prediction.squeeze(0).permute(1, 2, 0)
                 #print(prediction.shape)
                 out_file_name = os.path.join(
                     write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
@@ -72,20 +74,8 @@ class Test():
                         point_predicion = prediction[row][col]
                         #print(point_predicion.shape)
 
-                        if point_predicion[0] < 0.5:
-                            prediction_result = 0
-                        elif point_predicion[0] > 0.5 and point_predicion[
-                                1] < 0.5:
-                            prediction_result = 0.1
-                        elif point_predicion[1] > 0.5 and point_predicion[
-                                2] < 0.5:
-                            prediction_result = 3
-                        elif point_predicion[2] > 0.5 and point_predicion[
-                                3] < 0.5:
-                            prediction_result = 10
-                        else:
-                            prediction_result = 20
-                        f.write(str(prediction_result) + '\n')
+
+                        f.write(str(point_predicion) + '\n')
                     f.close()
 
     def get_input_list(self, input_file_name):
@@ -160,6 +150,6 @@ if __name__ == "__main__":
     device = 'cuda'
     test = Test(config['unet'], device)
     test.initialize(
-        '/mnt/pami23/zhengxin/projects/weather/unet/checkpoint/unet_lr05400.pth'
+        '/mnt/pami23/zhengxin/projects/weather/unet_temperature/checkpoint/unet_lr04_600.pth'
     )
     test.test()

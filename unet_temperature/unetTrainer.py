@@ -18,7 +18,7 @@ class UNetTrainer(nn.Module):
         super(UNetTrainer, self).__init__()
         self.net = ConvUNet(args['in_channels'],
                             args['n_classes'])
-        self.init_params()
+        #self.init_params()
         self.train_iter = train_iter
         self.evaluate_iter = evaluate_iter
         self.device = device
@@ -102,18 +102,18 @@ class UNetTrainer(nn.Module):
 
             #每100个epoch存一次
             if step % 100 == 0:
-                torch.save(self.net.state_dict(), save_path[:-4] + '_{}'.format(step) + '.pth')
+                torch.save(self.net.state_dict(), save_path[:-4] + '_{}'.format(400 + step) + '.pth')
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
             #每个epoch都save
-            # if step % 1 == 0:
-            #     temp_evaluate_loss = self.unet_evaluate()
-            #     if temp_evaluate_loss < evaluate_loss:
-            #         evaluate_loss = temp_evaluate_loss
-            #         torch.save(self.net.state_dict(), save_path)
-            #     self.net.train()
+            if step % 1 == 0:
+                temp_evaluate_loss = self.unet_evaluate()
+                if temp_evaluate_loss < evaluate_loss:
+                    evaluate_loss = temp_evaluate_loss
+                    torch.save(self.net.state_dict(), save_path)
+                self.net.train()
         self.writer.flush()
         return
 
