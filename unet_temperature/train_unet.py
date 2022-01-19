@@ -1,7 +1,7 @@
 import argparse
 import yaml
 from torch.utils.data.dataloader import DataLoader
-from dataset import gridDataset
+from datasetwithtime import gridDataset
 from unetTrainer import UNetTrainer
 
 parser = argparse.ArgumentParser()

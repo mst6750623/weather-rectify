@@ -29,6 +29,10 @@ class ConvUNet(nn.Module):
 
         self.out_conv = nn.Conv2d(64, n_classes, kernel_size=1)
 
+        self.timenet = nn.Sequential(nn.Flatten(),
+                                     nn.Linear(64 * 69 * 73, 1024),
+                                     nn.ReLU(True), nn.Linear(1024, 8))
+
     def forward(self, x):
         x1 = self.in_conv(x)
         x2 = self.down1(x1)
@@ -40,15 +44,15 @@ class ConvUNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-
+        time = self.timenet(x)
         x = self.out_conv(x)
 
         #输出层仅仅是1 * 1卷积就输出了，没有激活函数
-        return x.squeeze()
+        return x.squeeze(), torch.sigmoid(time)
 
 
 if __name__ == '__main__':
     net = ConvUNet(22, 1)
     x = torch.rand(8, 22, 69, 73)
-    t = net(x)
-    print(t.shape)
+    x, time = net(x)
+    print(x.shape, time.shape)
