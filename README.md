@@ -28,6 +28,8 @@ confidence lr=1e-4  100k降
 encoder lr=1e-2 500k降
 ODR 无预训练 lr=1e-3 50k降
 
+气温：0.59, output/Pred_temperature_0_59 (ckpt: unet_lr04_600)
+
 ## 验证记录
 confidence2.pth(没用), encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
 confidence2.pth(没用), encoderwithodr3.pth, decoder.pth, odr3.pth | ts:0.16698,0.08479,0.00267,0
