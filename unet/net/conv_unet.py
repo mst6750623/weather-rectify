@@ -29,6 +29,13 @@ class ConvUNet(nn.Module):
 
         self.out_conv = nn.Conv2d(64, n_classes, kernel_size=1)
 
+        self.timeup1 = Upsample(2, 1024, 512, 3, 1, bilinear)
+        self.timeup2 = Upsample(2, 512, 256, 3, 1, bilinear)
+        self.timeup3 = Upsample(2, 256, 128, 3, 1, bilinear)
+        self.timeup4 = Upsample(2, 128, 64, 3, 1, bilinear)
+
+        self.time_out_conv = nn.Conv2d(64, 8, kernel_size=1)
+
     def forward(self, x):
         x1 = self.in_conv(x)
         x2 = self.down1(x1)
@@ -43,12 +50,18 @@ class ConvUNet(nn.Module):
 
         x = self.out_conv(x)
 
+        time = self.timeup1(x5, x4)
+        time = self.timeup2(time, x3)
+        time = self.timeup3(time, x2)
+        time = self.timeup4(time, x1)
+
+        time = self.time_out_conv(time)
         #要用sigmoid转换为概率！
-        return torch.sigmoid(x)
+        return torch.sigmoid(x), torch.sigmoid(time)
 
 
 if __name__ == '__main__':
     net = ConvUNet(22, 1)
     x = torch.rand(8, 22, 69, 73)
-    t = net(x)
-    print(t.shape)
+    t, time = net(x)
+    print(t.shape, time.shape)
