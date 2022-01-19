@@ -1,7 +1,7 @@
 import argparse
 import yaml
 from torch.utils.data.dataloader import DataLoader
-from dataset import gridDataset
+from datasetwithtime import gridDataset
 from unetTrainer import UNetTrainer
 
 parser = argparse.ArgumentParser()
@@ -27,11 +27,11 @@ def main():
     epoch = config['epoch']
 
     train_dataset = gridDataset(config['train_dir'],
-                                   isTrain=True,
-                                   isFirstTime=False)
+                                isTrain=True,
+                                isFirstTime=False)
     evaluate_dataset = gridDataset(config['train_dir'],
-                                      isTrain=False,
-                                      isFirstTime=False)
+                                   isTrain=False,
+                                   isFirstTime=False)
     train_iter = DataLoader(train_dataset,
                             batch_size=config['batch_size'],
                             num_workers=config['num_workers'],
@@ -44,19 +44,17 @@ def main():
 
     if opts.test:
         if opts.model == 'unet':
-            trainer = UNetTrainer(config['unet'],
-                                           train_iter, evaluate_iter, device,
-                                           opts.modelname).to(device)
+            trainer = UNetTrainer(config['unet'], train_iter, evaluate_iter,
+                                  device, opts.modelname).to(device)
         else:
             print('There is no correlated model!')
     else:
         if opts.model == 'unet':
-            trainer = UNetTrainer(config['unet'],
-                                           train_iter, evaluate_iter, device,
-                                           opts.modelname).to(device)
+            trainer = UNetTrainer(config['unet'], train_iter, evaluate_iter,
+                                  device, opts.modelname).to(device)
             trainer.unet_train(epoch=config['epoch'],
-                                  lr=1e-6,
-                                  save_path='checkpoint/unet.pth')
+                               lr=1e-5,
+                               save_path='../checkpoint/unetwithtime.pth')
         else:
             print('There is no correlated model!')
         #trainer.confidence_train()

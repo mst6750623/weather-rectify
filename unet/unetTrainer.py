@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torch.nn.functional as F
 from net.conv_unet import ConvUNet
 from net.focal import FocalLoss
 from tqdm import tqdm
@@ -46,9 +47,9 @@ class UNetTrainer(nn.Module):
 
     def unet_train(self, epoch, lr, save_path):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-        #                                                  step_size=500000,
-        #                                                  gamma=0.5)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+                                                         step_size=150000,
+                                                         gamma=0.1)
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
@@ -58,13 +59,14 @@ class UNetTrainer(nn.Module):
             losses = []
             print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
-                input, rain, _, _ = iter
+                input, rain, _, time = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(self.device)
                 assert len(rain.shape) == 3  #确保rain是(N, 69, 73)
                 torch.set_printoptions(profile="full")
-                y_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
 
+                time = self.generateLabelOneHot(time, shape=(time.shape[0], 8))
+                y_hat, time_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
                 #先算出目标
                 #TODO: 不确定这样切片有没有错……
                 y = torch.zeros_like(y_hat).to('cuda')
@@ -72,13 +74,16 @@ class UNetTrainer(nn.Module):
                     # if rain[j] > self.threshold[k]:
                     #     y[j][k] = 1
                     y[:, k] = rain > self.threshold[k]
-
                 with torch.no_grad():
                     mask = self.get_mask(rain)  #对rain求mask！
 
+                time_hat = F.softmax(time_hat)
+                #print(time, time_hat)
                 optimizer.zero_grad()
                 ce, _ = FocalLoss()(y_hat, y, mask)
-                loss = ce  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
+                loss_time = nn.BCELoss()(time_hat, time)
+
+                loss = ce + 100 * loss_time  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -98,16 +103,14 @@ class UNetTrainer(nn.Module):
                     self.net.train()
                 #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
 
-            #每100个epoch存一次
-            if step % 100 == 0:
-                torch.save(self.net.state_dict(),
-                           save_path[:-4] + '{}'.format(step) + '.pth')
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)
-            #每个epoch都save
-            if step % 1 == 0:
+            #每100个epoch都save
+            if step % 100 == 0 and step != 0:
+                torch.save(self.net.state_dict(),
+                           save_path[:-4] + '{}'.format(step) + '.pth')
                 temp_evaluate_loss = self.unet_evaluate()
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
@@ -163,6 +166,13 @@ class UNetTrainer(nn.Module):
         x = torch.where(x > -99999, ones, x)
         x = torch.where(x == -99999, zero, x)
         return x
+
+    def generateLabelOneHot(self, x, shape=(32, 8)):
+        result = torch.zeros(shape).to(self.device)
+        for idx, item in enumerate(x):
+            result[idx][int(item)] = 1
+        #print(x, result)
+        return result
 
     def generateOneHot(self, softmax):
         maxIdxs = torch.argmax(softmax, dim=1, keepdim=True).cpu().long()

@@ -8,7 +8,7 @@ Code for weather rectify competition
 - [x] validate模块构建
 - [x] 跑测试集！
 - [x] 重新构建一个最简单的UNET
-- [ ] 到底什么是正确的提交格式啊啊啊啊啊啊啊啊啊！
+- [x] 到底什么是正确的提交格式啊啊啊啊啊啊啊啊啊！
 - [ ] 加分支分类器预测时间（已做好dataloader返回）
 - [ ] 搞清楚那个把序回归转为具体降水值的公式！
 - validate.py里有几个TODO是我想不明白的问题，有空看看TAT
@@ -31,7 +31,11 @@ ODR 无预训练 lr=1e-3 50k降
 气温：0.59, output/Pred_temperature_0_59 (ckpt: unet_lr04_600)
 
 ## 验证记录
-confidence2.pth(没用), encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
-confidence2.pth(没用), encoderwithodr3.pth, decoder.pth, odr3.pth | ts:0.16698,0.08479,0.00267,0
+- ODA:
+    confidence2.pth(没用), encoderwithodr2.pth, decoder.pth, odr2.pth | ts:0.07359,0.01593,0.00697,0
+    confidence2.pth(没用), encoderwithodr3.pth, decoder.pth, odr3.pth | ts:0.16698,0.08479,0.00267,0
+- unet:
+    unet-5200.pth | ts: 0.52288, 0.30893, 0.13817, 0.04452 (1.19早第26名)
+
 ## The correlation matrices between the features are as follows:
 ![](corrMatrix.jpg)

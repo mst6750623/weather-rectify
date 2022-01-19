@@ -41,41 +41,41 @@ class Validate(nn.Module):
         for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
             input, rain, _ = iter
             input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device) #(N, H, W)
+            rain = rain.type(torch.FloatTensor).to(self.device)  #(N, H, W)
 
             #只算一下TS
             with torch.no_grad():
-                pred_classification_scores = self.unet(input) #scores: (N, 4, H, W)
-                regression_value = None #TODO: 把分类转为具体数值
+                pred_classification_scores = self.unet(
+                    input)  #scores: (N, 4, H, W)
+                regression_value = None  #TODO: 把分类转为具体数值
                 mask = self.get_mask(rain)
                 threshold_for_probability = 0.7
 
-
                 for j, threas in enumerate(tsthreas):
-                    tp[j] += torch.sum(
-                        (mask * (rain >= threas)) * (pred_classification_scores[:, j] >=
-                                                 threshold_for_probability))
-                    tn[j] += torch.sum(
-                        (mask * (rain < threas)) * (pred_classification_scores[:, j] <
-                                                threshold_for_probability))
-                    fp[j] += torch.sum(
-                        (mask * (rain < threas)) * (pred_classification_scores[:, j] >=
-                                                threshold_for_probability))
-                    fn[j] += torch.sum(
-                        (mask * (rain >= threas)) * (pred_classification_scores[:, j] <
-                                                 threshold_for_probability))
+                    tp[j] += torch.sum((mask * (rain >= threas)) *
+                                       (pred_classification_scores[:, j] >=
+                                        threshold_for_probability))
+                    tn[j] += torch.sum((mask * (rain < threas)) *
+                                       (pred_classification_scores[:, j] <
+                                        threshold_for_probability))
+                    fp[j] += torch.sum((mask * (rain < threas)) *
+                                       (pred_classification_scores[:, j] >=
+                                        threshold_for_probability))
+                    fn[j] += torch.sum((mask * (rain >= threas)) *
+                                       (pred_classification_scores[:, j] <
+                                        threshold_for_probability))
                 #print('finals:', tp, tn, fp, fn)
                 total_points += rain.shape[0] * rain.shape[1] * rain.shape[2]
                 invalid_points += torch.sum(mask)
         #计算TS（对于整个epoch而言）,四舍五入保留5位小数
-        print('Valid total points: {} - {} = {}'.format(total_points, invalid_points, total_points - invalid_points))
+        print('Valid total points: {} - {} = {}'.format(
+            total_points, invalid_points, total_points - invalid_points))
         for j, threas in enumerate(tsthreas):
             ts[j] = tp[j] / (tp[j] + fp[j] + fn[j])
             print('For x = {}, ts = {}, '
                   'tp = {}, tn = {}, '
-                  'fp = {}, fn = {}'.format(threas.cpu().numpy(), ts[j], tp[j], tn[j], fp[j], fn[j]))
-
-
+                  'fp = {}, fn = {}'.format(threas.cpu().numpy(), ts[j], tp[j],
+                                            tn[j], fp[j], fn[j]))
 
     #生成将所有的-99999变成0,其他为1的mask
     def get_mask(self, x):
@@ -97,16 +97,15 @@ class Validate(nn.Module):
 if __name__ == '__main__':
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     evaluate_dataset = gridDataset(config['train_dir'],
-                                      isTrain=False,
-                                      isFirstTime=False)
+                                   isTrain=False,
+                                   isFirstTime=False)
 
     evaluate_iter = DataLoader(evaluate_dataset,
                                batch_size=256,
                                shuffle=True,
                                pin_memory=True)
     device = 'cuda'
-    validate = Validate(config['unet'], evaluate_iter,
-                        device).to(device)
-    validate.initialize('checkpoint_new/unet_lr05100.pth')
+    validate = Validate(config['unet'], evaluate_iter, device).to(device)
+    validate.initialize('../checkpoint/unet.pth')
     #validate.forward()
     validate.simple_validate()

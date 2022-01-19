@@ -4,6 +4,6 @@ unet:
   in_channels: 22
   n_classes: 4
 confidence: 0
-epoch: 1
+epoch: 1000
 batch_size: 16
 num_workers: 8
