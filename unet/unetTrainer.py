@@ -75,12 +75,14 @@ class UNetTrainer(nn.Module):
                     #     y[j][k] = 1
                     y[:, k] = rain > self.threshold[k]
                 with torch.no_grad():
-                    mask = self.get_mask(rain)  #对rain求mask！
+                    mask = self.get_mask(rain)  #对rain中-99999求mask！
+                    mask2 = self.generateResampleMask(
+                        rain)  #对rain中0按95%的概率求mask
 
                 time_hat = F.softmax(time_hat)
                 #print(time, time_hat)
                 optimizer.zero_grad()
-                ce, _ = FocalLoss()(y_hat, y, mask)
+                ce, _ = FocalLoss()(y_hat, y, mask * mask2)
                 loss_time = nn.BCELoss()(time_hat, time)
 
                 loss = ce + 100 * loss_time  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
@@ -167,6 +169,17 @@ class UNetTrainer(nn.Module):
         x = torch.where(x == -99999, zero, x)
         return x
 
+    # 将batchsize*69*73的降水标签添加mask
+    def generateResampleMask(self, rain):
+        #able_list = [0, 0, 0, 0, 0]
+        zeros = torch.zeros_like(rain)
+        ones = torch.ones_like(rain)
+        if torch.rand(1) > 0.05:
+            result = torch.where(rain == 0, zeros, ones)
+        #print(result)
+        return result
+
+    #将时间标签变为one-hot
     def generateLabelOneHot(self, x, shape=(32, 8)):
         result = torch.zeros(shape).to(self.device)
         for idx, item in enumerate(x):

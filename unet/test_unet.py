@@ -19,7 +19,7 @@ class Test():
             '/mnt/pami23/stma/weather/processed_data/std.pth').numpy()
 
         self.device = device
-
+        self.threshold = 0.4
         self.net = ConvUNet(args['in_channels'], args['n_classes']).to(device)
 
     def initialize(self, unet_path):
@@ -73,16 +73,19 @@ class Test():
                         point_predicion = prediction[row][col]
                         #print(point_predicion.shape)
 
-                        if point_predicion[0] < 0.5:
+                        if point_predicion[0] < self.threshold:
                             prediction_result = 0
-                        elif point_predicion[0] > 0.5 and point_predicion[
-                                1] < 0.5:
+                        elif point_predicion[
+                                0] > self.threshold and point_predicion[
+                                    1] < self.threshold:
                             prediction_result = 0.1
-                        elif point_predicion[1] > 0.5 and point_predicion[
-                                2] < 0.5:
+                        elif point_predicion[
+                                1] > self.threshold and point_predicion[
+                                    2] < self.threshold:
                             prediction_result = 3
-                        elif point_predicion[2] > 0.5 and point_predicion[
-                                3] < 0.5:
+                        elif point_predicion[
+                                2] > self.threshold and point_predicion[
+                                    3] < self.threshold:
                             prediction_result = 10
                         else:
                             prediction_result = 20
@@ -160,5 +163,5 @@ if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     test = Test(config['unet'], device)
-    test.initialize('../checkpoint/unetwithtimeinit200.pth')
+    test.initialize('../checkpoint/unetwithtimeinit800.pth')
     test.test()

@@ -37,7 +37,7 @@ ODR 无预训练 lr=1e-3 50k降
 - unet:
     unet-5200.pth | ts: 0.52288, 0.30893, 0.13817, 0.04452 (1.19早第26名)
     unetwithtime200.pth | ts:0.55325 0.35189 0.15495 0.06053
-    unetwithtime700.pth | ts:0.55613 0.37411 0.17546 0.07844
+    unetwithtime700.pth | ts:0.55613 0.37411 0.17546 0.07844(1.20中午27名)
     unetwithtimeinit200.pth(随机初始化) ｜ ts:0.54218 0.34381 0.14669 0.06306
     unetwithtimeinit700.pth(随机初始化) ｜ ts:0.55907 0.37914 0.18206 0.07829
 ## The correlation matrices between the features are as follows:
