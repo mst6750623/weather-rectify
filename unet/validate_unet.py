@@ -7,7 +7,7 @@ import yaml
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 from net.conv_unet import ConvUNet
-from dataset import gridDataset
+from datasetwithtime import gridDataset
 
 
 #注意，这是validate，不是最终生成的test
@@ -39,13 +39,13 @@ class Validate(nn.Module):
         invalid_points = 0
 
         for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
-            input, rain, _ = iter
+            input, rain, _, _ = iter
             input = input.type(torch.FloatTensor).to(self.device)
             rain = rain.type(torch.FloatTensor).to(self.device)  #(N, H, W)
 
             #只算一下TS
             with torch.no_grad():
-                pred_classification_scores = self.unet(
+                pred_classification_scores, time = self.unet(
                     input)  #scores: (N, 4, H, W)
                 regression_value = None  #TODO: 把分类转为具体数值
                 mask = self.get_mask(rain)
@@ -106,6 +106,6 @@ if __name__ == '__main__':
                                pin_memory=True)
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter, device).to(device)
-    validate.initialize('../checkpoint/unet.pth')
+    validate.initialize('../checkpoint/unetwithtime700.pth')
     #validate.forward()
     validate.simple_validate()

@@ -52,9 +52,10 @@ def main():
         if opts.model == 'unet':
             trainer = UNetTrainer(config['unet'], train_iter, evaluate_iter,
                                   device, opts.modelname).to(device)
+            #trainer.initialize('../checkpoint/unetwithtime100.pth')
             trainer.unet_train(epoch=config['epoch'],
                                lr=1e-5,
-                               save_path='../checkpoint/unetwithtime.pth')
+                               save_path='../checkpoint/unetwithtimeinit.pth')
         else:
             print('There is no correlated model!')
         #trainer.confidence_train()

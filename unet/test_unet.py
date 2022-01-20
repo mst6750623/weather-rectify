@@ -54,8 +54,9 @@ class Test():
                 input_list = torch.from_numpy(input_list).to(self.device)
                 input_list = input_list.unsqueeze(0)
                 idx = 0
-                prediction = self.net(input_list).to(self.device)
-                prediction = prediction.squeeze(0).permute(1, 2, 0)
+                prediction, _ = self.net(input_list)
+                prediction = prediction.squeeze(0).permute(1, 2,
+                                                           0).to(self.device)
                 #print(prediction.shape)
                 out_file_name = os.path.join(
                     write_dir_name, 'pred_' + '{:0>2d}'.format(j + 1) + '.txt')
@@ -159,7 +160,5 @@ if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     test = Test(config['unet'], device)
-    test.initialize(
-        '/mnt/pami23/zhengxin/projects/weather/unet/checkpoint/unet_lr05400.pth'
-    )
+    test.initialize('../checkpoint/unetwithtimeinit200.pth')
     test.test()

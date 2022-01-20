@@ -17,7 +17,7 @@ class UNetTrainer(nn.Module):
     def __init__(self, args, train_iter, evaluate_iter, device, writer='unet'):
         super(UNetTrainer, self).__init__()
         self.net = ConvUNet(args['in_channels'], args['n_classes'])
-        #self.init_params()
+        self.init_params()
         self.train_iter = train_iter
         self.evaluate_iter = evaluate_iter
         self.device = device
@@ -127,10 +127,10 @@ class UNetTrainer(nn.Module):
         self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, rain, temp, _ = iter
+                input, rain, temp, time = iter
                 input = input.type(torch.FloatTensor).to(self.device)
                 rain = rain.type(torch.FloatTensor).to(self.device)
-                y_hat = self.net(input)
+                y_hat, time = self.net(input)
                 mask = self.get_mask(rain)  #对rain求mask
                 #TODO：那个将序回归换算回具体数值的公式
                 #对应于学长代码ordinalTrainer.py第237行
