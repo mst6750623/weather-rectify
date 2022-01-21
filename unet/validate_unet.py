@@ -36,7 +36,7 @@ class Validate(nn.Module):
         ts = [0] * len(tsthreas)
 
         total_points = 0
-        invalid_points = 0
+        valid_points = 0
 
         for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
             input, rain, _, _ = iter
@@ -66,10 +66,10 @@ class Validate(nn.Module):
                                         threshold_for_probability))
                 #print('finals:', tp, tn, fp, fn)
                 total_points += rain.shape[0] * rain.shape[1] * rain.shape[2]
-                invalid_points += torch.sum(mask)
+                valid_points += torch.sum(mask)
         #计算TS（对于整个epoch而言）,四舍五入保留5位小数
         print('Valid total points: {} - {} = {}'.format(
-            total_points, invalid_points, total_points - invalid_points))
+            total_points, total_points - valid_points, valid_points))
         for j, threas in enumerate(tsthreas):
             ts[j] = tp[j] / (tp[j] + fp[j] + fn[j])
             print('For x = {}, ts = {}, '

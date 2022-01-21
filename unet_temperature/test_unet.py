@@ -33,7 +33,7 @@ class Test():
         config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
         test_path = config['test_dir']
         #记得改掉！
-        out_path = '/mnt/pami23/zhengxin/projects/weather/unet_temperature/output/Pred_temperature/'
+        out_path = '/mnt/pami23/zhengxin/projects/temp/output/Pred_temperature/'
         for i in tqdm(range(400)):
             file_dir_name = os.path.join(test_path,
                                          'example' + '{:0>5d}'.format(i + 1))
@@ -56,7 +56,8 @@ class Test():
                     input_list = torch.from_numpy(input_list).to(self.device)
                     input_list = input_list.unsqueeze(0)
                     idx = 0
-                    prediction = self.net(input_list).cpu().numpy()
+                    prediction, _ = self.net(input_list)
+                    prediction = prediction.cpu().numpy()
                 #prediction = prediction.squeeze(0).permute(1, 2, 0)
                 #print(prediction.shape)
                 out_file_name = os.path.join(
@@ -150,6 +151,6 @@ if __name__ == "__main__":
     device = 'cuda'
     test = Test(config['unet'], device)
     test.initialize(
-        '/mnt/pami23/zhengxin/projects/weather/unet_temperature/checkpoint/unet_lr04_600.pth'
+        '/mnt/pami23/zhengxin/projects/temp/checkpoint/unet_lr0405_best.pth'
     )
     test.test()

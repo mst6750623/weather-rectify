@@ -7,9 +7,9 @@ import yaml
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 from net.conv_unet import ConvUNet
-from dataset import gridDataset
+from datasetwithtime import gridDataset
 
-#TODO: to be modified...
+
 #注意，这是validate，不是最终生成的test
 class Validate(nn.Module):
     def __init__(self, args, data_iter, device):
@@ -21,61 +21,41 @@ class Validate(nn.Module):
 
     def initialize(self, unet_path):
         unet_ckpt = torch.load(unet_path)
-
+        print('loading checkpoint:', unet_path)
         self.unet.load_state_dict(unet_ckpt)
         self.unet.eval()
 
     def simple_validate(self):
-
-        tsthreas = torch.tensor([0.1, 3, 10, 20]).to(self.device)
-
-        tp = [0] * len(tsthreas)  # true positive
-        tn = [0] * len(tsthreas)  # true negetive
-        fp = [0] * len(tsthreas)  # false positve
-        fn = [0] * len(tsthreas)  # false negetive
-        ts = [0] * len(tsthreas)
-
         total_points = 0
-        invalid_points = 0
-
+        valid_points = 0
+        loss = 0
+        loss_time = 0
+        count = 0
+        hit = 0
         for i, iter in enumerate(tqdm(self.data_iter, desc="validating: ")):
-            input, rain, _ = iter
-            input = input.type(torch.FloatTensor).to(self.device)
-            rain = rain.type(torch.FloatTensor).to(self.device) #(N, H, W)
-
-            #只算一下TS
             with torch.no_grad():
-                pred_classification_scores = self.unet(input) #scores: (N, 4, H, W)
-                regression_value = None #TODO: 把分类转为具体数值
-                mask = self.get_mask(rain)
-                threshold_for_probability = 0.7
+                input, _, temp, time = iter
+                input = input.type(torch.FloatTensor).to(self.device)
+                temp = temp.type(torch.FloatTensor).to(self.device)
+                time = self.generateLabelOneHot(time, shape = (time.shape[0], 8))
+                pred_temperature, pred_time = self.unet(input)
+                mask = self.get_mask(temp)
+                loss += nn.L1Loss(reduction = 'sum')(mask * temp,
+                                                    mask * pred_temperature)
 
+                pred_time = torch.argmax(pred_time, dim=1)
+                for j in range(time.shape[0]):
+                    if time[j][pred_time[j]] == 1:
+                        hit += 1
 
-                for j, threas in enumerate(tsthreas):
-                    tp[j] += torch.sum(
-                        (mask * (rain >= threas)) * (pred_classification_scores[:, j] >=
-                                                 threshold_for_probability))
-                    tn[j] += torch.sum(
-                        (mask * (rain < threas)) * (pred_classification_scores[:, j] <
-                                                threshold_for_probability))
-                    fp[j] += torch.sum(
-                        (mask * (rain < threas)) * (pred_classification_scores[:, j] >=
-                                                threshold_for_probability))
-                    fn[j] += torch.sum(
-                        (mask * (rain >= threas)) * (pred_classification_scores[:, j] <
-                                                 threshold_for_probability))
-                #print('finals:', tp, tn, fp, fn)
-                total_points += rain.shape[0] * rain.shape[1] * rain.shape[2]
-                invalid_points += torch.sum(mask)
-        #计算TS（对于整个epoch而言）,四舍五入保留5位小数
-        print('Valid total points: {} - {} = {}'.format(total_points, invalid_points, total_points - invalid_points))
-        for j, threas in enumerate(tsthreas):
-            ts[j] = tp[j] / (tp[j] + fp[j] + fn[j])
-            print('For x = {}, ts = {}, '
-                  'tp = {}, tn = {}, '
-                  'fp = {}, fn = {}'.format(threas.cpu().numpy(), ts[j], tp[j], tn[j], fp[j], fn[j]))
+                total_points += temp.shape[0] * temp.shape[1] * temp.shape[2]
+                valid_points += torch.sum(mask)
 
+                count += time.shape[0]
 
+        print('Valid total points: {} - {} = {}'.format(total_points, total_points - valid_points, valid_points))
+        print('Classification loss per point: ', loss / valid_points) #正是网站的评分结果
+        print('Time prediction accuracy: {} / {} = {}'.format(hit, count, hit / count))
 
     #生成将所有的-99999变成0,其他为1的mask
     def get_mask(self, x):
@@ -85,6 +65,13 @@ class Validate(nn.Module):
         x = torch.where(x > -99999, ones, x)
         x = torch.where(x == -99999, zero, x)
         return x
+
+    def generateLabelOneHot(self, x, shape=(32, 8)):
+        result = torch.zeros(shape).to(self.device)
+        for idx, item in enumerate(x):
+            result[idx][int(item)] = 1
+        #print(x, result)
+        return result
 
     def generateOneHot(self, softmax):
         maxIdxs = torch.argmax(softmax, dim=1, keepdim=True).cpu().long()
@@ -107,6 +94,6 @@ if __name__ == '__main__':
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter,
                         device).to(device)
-    validate.initialize('checkpoint_new/unet_lr05100.pth')
+    validate.initialize('checkpoint/unet_lr0405_801.pth')
     #validate.forward()
     validate.simple_validate()

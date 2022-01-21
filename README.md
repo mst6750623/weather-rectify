@@ -28,7 +28,10 @@ confidence lr=1e-4  100k降
 encoder lr=1e-2 500k降
 ODR 无预训练 lr=1e-3 50k降
 
-气温：0.59, output/Pred_temperature_0_59 (ckpt: unet_lr04_600)
+气温：0.59, /mnt/pami23/zhengxin/projects/weather/unet_temperature/output/Pred_temperature_0_59 
+            (ckpt: /mnt/pami23/zhengxin/projects/weather/unet_temperature/checkpoint/unet_lr04_600)
+    0.5966, /mnt/pami23/zhengxin/projects/temp/output/Pred_temperature_05966
+            (ckpt: /mnt/pami23/zhengxin/projects/temp/checkpoint/unet_best_05966.pth)
 
 ## 验证记录
 - ODA:

@@ -24,7 +24,7 @@ class UNetTrainer(nn.Module):
         self.evaluate_iter = evaluate_iter
         self.device = device
         self.writer = SummaryWriter(comment=writer)
-        self.cof = 1
+        self.cof = 100
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -62,8 +62,6 @@ class UNetTrainer(nn.Module):
         print('total epoch:', epoch)
         for step in range(epoch):
             losses = []
-            losses_time = []
-            total_losses = []
             print('epoch: ', step)
             for i, iter in enumerate(tqdm(self.train_iter)):
                 input, _, temperature, time = iter
@@ -86,14 +84,13 @@ class UNetTrainer(nn.Module):
                 loss_time = nn.BCELoss()(time_hat, time)
                 optimizer.zero_grad()
                 loss = nn.L1Loss(reduction='sum')(mask * temperature,
-                                                  mask * pred_temperature) / (batch_size * valid_points)
+                                                  mask * pred_temperature) / valid_points
                 total_loss = loss + self.cof * loss_time
                 total_loss.backward()
                 optimizer.step()
                 total_steps += 1
                 losses.append(loss.item())
-                losses_time.append(loss_time.item())
-                total_losses.append(total_loss.item())
+
 
                 if i % tb_log_intv == 0 and i != 0:
                     avgl = np.mean(losses[-tb_log_intv:])
@@ -143,7 +140,7 @@ class UNetTrainer(nn.Module):
                 valid_points = torch.sum(mask)
 
                 loss = nn.L1Loss(reduction = 'sum')(mask * temperature,
-                                                    mask * pred_temperature) / (batch_size * valid_points)
+                                                    mask * pred_temperature) / valid_points
 
                 total_steps += 1
                 losses.append(loss.item())
