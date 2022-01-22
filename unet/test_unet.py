@@ -73,19 +73,16 @@ class Test():
                         point_predicion = prediction[row][col]
                         #print(point_predicion.shape)
 
-                        if point_predicion[0] < self.threshold:
+                        if point_predicion[0] < 0.1:
                             prediction_result = 0
-                        elif point_predicion[
-                                0] > self.threshold and point_predicion[
-                                    1] < self.threshold:
+                        elif point_predicion[0] > 0.1 and point_predicion[
+                                1] < 0.1:
                             prediction_result = 0.1
-                        elif point_predicion[
-                                1] > self.threshold and point_predicion[
-                                    2] < self.threshold:
+                        elif point_predicion[1] > 0.1 and point_predicion[
+                                2] < 0.1:
                             prediction_result = 3
-                        elif point_predicion[
-                                2] > self.threshold and point_predicion[
-                                    3] < self.threshold:
+                        elif point_predicion[2] > 0.1 and point_predicion[
+                                3] < 0.1:
                             prediction_result = 10
                         else:
                             prediction_result = 20
@@ -163,5 +160,5 @@ if __name__ == "__main__":
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     test = Test(config['unet'], device)
-    test.initialize('../checkpoint/unetwithtimeinit800.pth')
+    test.initialize('../checkpoint/unetwithtimeinitresample900.pth')
     test.test()
