@@ -32,6 +32,8 @@ ODR 无预训练 lr=1e-3 50k降
             (ckpt: /mnt/pami23/zhengxin/projects/weather/unet_temperature/checkpoint/unet_lr04_600)
     0.5966, /mnt/pami23/zhengxin/projects/temp/output/Pred_temperature_05966
             (ckpt: /mnt/pami23/zhengxin/projects/temp/checkpoint/unet_best_05966.pth)
+    0.58, /mnt/pami23/zhengxin/projects/temp/output/Pred_temperature_058
+         (ckpt: '/mnt/pami23/zhengxin/projects/temp/checkpoint/unet_lr0405_05896.pth')
 
 ## 验证记录
 - ODA:
