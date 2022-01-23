@@ -48,7 +48,7 @@ class ConvUNet(nn.Module):
         x = self.out_conv(x)
 
         #输出层仅仅是1 * 1卷积就输出了，没有激活函数
-        return x.squeeze(), torch.sigmoid(time)
+        return x.squeeze(), time
 
 
 if __name__ == '__main__':

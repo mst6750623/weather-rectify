@@ -24,7 +24,7 @@ class UNetTrainer(nn.Module):
         self.evaluate_iter = evaluate_iter
         self.device = device
         self.writer = SummaryWriter(comment=writer)
-        self.cof = 100
+        self.cof = 10
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -68,6 +68,7 @@ class UNetTrainer(nn.Module):
                 input = input.type(torch.FloatTensor).to(self.device)
                 temperature = temperature.type(torch.FloatTensor).to(
                     self.device)  #(N, H, W)
+                time = time.type(torch.int64).to(self.device)
 
                 batch_size = input.shape[0]
 
@@ -80,8 +81,9 @@ class UNetTrainer(nn.Module):
                 with torch.no_grad():
                     mask = self.get_mask(temperature)
                     valid_points = torch.sum(mask)
-                    time = self.generateLabelOneHot(time, shape = (time.shape[0], 8))
-                loss_time = nn.BCELoss()(time_hat, time)
+                    #time = self.generateLabelOneHot(time, shape = (time.shape[0], 8))
+                    time = time.squeeze()
+                loss_time = nn.CrossEntropyLoss()(time_hat, time)
                 optimizer.zero_grad()
                 loss = nn.L1Loss(reduction='sum')(mask * temperature,
                                                   mask * pred_temperature) / valid_points
@@ -109,8 +111,11 @@ class UNetTrainer(nn.Module):
             if step % 100 == 0:
                 torch.save(self.net.state_dict(),
                            save_path[:-4] + '_{}'.format(step) + '.pth')
-
+            if step % 50 == 0:
                 temp_evaluate_loss = self.unet_evaluate()
+                self.writer.add_scalar("evaluate_Loss",
+                                       temp_evaluate_loss.item(),
+                                       global_step = total_steps)
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
                     torch.save(self.net.state_dict(), save_path[:-4] + '_best.pth')
