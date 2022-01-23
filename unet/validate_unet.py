@@ -49,21 +49,21 @@ class Validate(nn.Module):
                     input)  #scores: (N, 4, H, W)
                 regression_value = None  #TODO: 把分类转为具体数值
                 mask = self.get_mask(rain)
-                threshold_for_probability = 0.7
+                threshold_for_probability = [0.1, 0.1, 0.1, 0.1]
 
                 for j, threas in enumerate(tsthreas):
                     tp[j] += torch.sum((mask * (rain >= threas)) *
                                        (pred_classification_scores[:, j] >=
-                                        threshold_for_probability))
+                                        threshold_for_probability[j]))
                     tn[j] += torch.sum((mask * (rain < threas)) *
                                        (pred_classification_scores[:, j] <
-                                        threshold_for_probability))
+                                        threshold_for_probability[j]))
                     fp[j] += torch.sum((mask * (rain < threas)) *
                                        (pred_classification_scores[:, j] >=
-                                        threshold_for_probability))
+                                        threshold_for_probability[j]))
                     fn[j] += torch.sum((mask * (rain >= threas)) *
                                        (pred_classification_scores[:, j] <
-                                        threshold_for_probability))
+                                        threshold_for_probability[j]))
                 #print('finals:', tp, tn, fp, fn)
                 total_points += rain.shape[0] * rain.shape[1] * rain.shape[2]
                 valid_points += torch.sum(mask)
@@ -106,6 +106,6 @@ if __name__ == '__main__':
                                pin_memory=True)
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter, device).to(device)
-    validate.initialize('../checkpoint/unetwithtime700.pth')
+    validate.initialize('../checkpoint/unetwithtimeinitresample900.pth')
     #validate.forward()
     validate.simple_validate()

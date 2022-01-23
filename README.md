@@ -9,7 +9,7 @@ Code for weather rectify competition
 - [x] 跑测试集！
 - [x] 重新构建一个最简单的UNET
 - [x] 到底什么是正确的提交格式啊啊啊啊啊啊啊啊啊！
-- [ ] 加分支分类器预测时间（已做好dataloader返回）
+- [x] 加分支分类器预测时间（已做好dataloader返回）
 - [ ] 搞清楚那个把序回归转为具体降水值的公式！
 - validate.py里有几个TODO是我想不明白的问题，有空看看TAT
 
@@ -32,6 +32,8 @@ ODR 无预训练 lr=1e-3 50k降
             (ckpt: /mnt/pami23/zhengxin/projects/weather/unet_temperature/checkpoint/unet_lr04_600)
     0.5966, /mnt/pami23/zhengxin/projects/temp/output/Pred_temperature_05966
             (ckpt: /mnt/pami23/zhengxin/projects/temp/checkpoint/unet_best_05966.pth)
+    0.58, /mnt/pami23/zhengxin/projects/temp/output/Pred_temperature_058
+         (ckpt: '/mnt/pami23/zhengxin/projects/temp/checkpoint/unet_lr0405_05896.pth')
 
 ## 验证记录
 - ODA:
@@ -42,6 +44,8 @@ ODR 无预训练 lr=1e-3 50k降
     unetwithtime200.pth | ts:0.55325 0.35189 0.15495 0.06053
     unetwithtime700.pth | ts:0.55613 0.37411 0.17546 0.07844(1.20中午27名)
     unetwithtimeinit200.pth(随机初始化) ｜ ts:0.54218 0.34381 0.14669 0.06306
-    unetwithtimeinit700.pth(随机初始化) ｜ ts:0.55907 0.37914 0.18206 0.07829
+    unetwithtimeinit700.pth(随机初始化) ｜ ts:0.55907 0.37914 0.18206 0.07829(1.20晚28名)
+    unetwithtimeinitresample900.pth | ts:0.53944 0.37850 0.21543 0.11423
+    unetwithtimeinitresample900.pth(threshold=0.1) | ts:0.59304 0.41909 0.25539 0.16229
 ## The correlation matrices between the features are as follows:
 ![](corrMatrix.jpg)

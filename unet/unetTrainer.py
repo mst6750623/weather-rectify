@@ -174,6 +174,7 @@ class UNetTrainer(nn.Module):
         #able_list = [0, 0, 0, 0, 0]
         zeros = torch.zeros_like(rain)
         ones = torch.ones_like(rain)
+        result = ones
         if torch.rand(1) > 0.05:
             result = torch.where(rain == 0, zeros, ones)
         #print(result)
