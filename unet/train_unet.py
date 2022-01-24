@@ -3,6 +3,7 @@ import yaml
 from torch.utils.data.dataloader import DataLoader
 from datasetwithtime import gridDataset
 from unetTrainer import UNetTrainer
+#from unetTrainer_regression import UNetTrainer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="unet")
@@ -53,10 +54,12 @@ def main():
             trainer = UNetTrainer(config['unet'], train_iter, evaluate_iter,
                                   device, opts.modelname).to(device)
             #trainer.initialize('../checkpoint/unetwithtime100.pth')
+            trainer.init_params()
             trainer.unet_train(
                 epoch=config['epoch'],
                 lr=1e-5,
-                save_path='../checkpoint/unetwithtimeinitresample.pth')
+                save_path=
+                '../checkpoint/unetwithtimeinitresampleupdatelr=-5.pth')
         else:
             print('There is no correlated model!')
         #trainer.confidence_train()

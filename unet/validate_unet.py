@@ -49,7 +49,7 @@ class Validate(nn.Module):
                     input)  #scores: (N, 4, H, W)
                 regression_value = None  #TODO: 把分类转为具体数值
                 mask = self.get_mask(rain)
-                threshold_for_probability = [0.1, 0.1, 0.1, 0.1]
+                threshold_for_probability = [0.4, 0.3, 0.1, 0.1]
 
                 for j, threas in enumerate(tsthreas):
                     tp[j] += torch.sum((mask * (rain >= threas)) *
@@ -106,6 +106,7 @@ if __name__ == '__main__':
                                pin_memory=True)
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter, device).to(device)
-    validate.initialize('../checkpoint/unetwithtimeinitresample900.pth')
+    validate.initialize(
+        '../checkpoint/unetwithtimeinitresampleupdatelr=-5700.pth')
     #validate.forward()
     validate.simple_validate()

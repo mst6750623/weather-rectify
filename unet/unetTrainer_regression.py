@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
-from net.conv_unet import ConvUNet
+from net.conv_unet_regression import ConvUNet
 from net.focal import FocalLoss
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
@@ -47,9 +47,7 @@ class UNetTrainer(nn.Module):
 
     def unet_train(self, epoch, lr, save_path):
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=150000,
-                                                         gamma=0.1)
+        #self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=150000,gamma=0.1)
         tb_log_intv = 200
         total_steps = 0
         evaluate_loss = 99999
@@ -64,28 +62,23 @@ class UNetTrainer(nn.Module):
                 rain = rain.type(torch.FloatTensor).to(self.device)
                 assert len(rain.shape) == 3  #确保rain是(N, 69, 73)
                 torch.set_printoptions(profile="full")
-
+                y = rain.unsqueeze(1)
                 time = self.generateLabelOneHot(time, shape=(time.shape[0], 8))
-                y_hat, time_hat = self.net(input)  #y_hat is (N, 4, 69, 73)
-                #先算出目标
-                #TODO: 不确定这样切片有没有错……
-                y = torch.zeros_like(y_hat).to('cuda')
-                for k in range(self.threshold.shape[0]):
-                    # if rain[j] > self.threshold[k]:
-                    #     y[j][k] = 1
-                    y[:, k] = rain > self.threshold[k]
+                y_hat, time_hat = self.net(input)  #y_hat is (N, 1, 69, 73)
+                #print("y_hat shape:", y_hat.shape)
+
                 with torch.no_grad():
-                    mask = self.get_mask(rain)  #对rain中-99999求mask！
-                    mask2 = self.generateResampleMask(
-                        rain)  #对rain中0按95%的概率求mask
+                    mask = self.get_mask(
+                        rain)  #对rain中-99999求mask！，对rain中0按95%的概率求mask
 
-                #time_hat = F.softmax(time_hat)
-                #print(time, time_hat)
+                #time_hat = F.softmax(time_hat, dim=1)
+
                 optimizer.zero_grad()
-                ce, _ = FocalLoss()(y_hat, y, mask * mask2)
-                loss_time = nn.CrossEntropyLoss()(time_hat, time)
+                loss_rain = nn.MSELoss()(y_hat * mask, y * mask)
 
-                loss = ce + 10 * loss_time  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
+                loss_time = nn.CrossEntropyLoss()(time_hat, time)
+                print(loss_rain, loss_time)
+                loss = loss_rain + 10 * loss_time  #就不用ce和emd的加权了; 而且应该也没必要按mask的数量平均
                 loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -97,13 +90,6 @@ class UNetTrainer(nn.Module):
                     self.writer.add_scalar("iter_Loss",
                                            loss.item(),
                                            global_step=total_steps)
-                if i % 500000 == 0 and i != 0:
-                    temp_evaluate_loss = self.unet_evaluate()
-                    if temp_evaluate_loss < evaluate_loss:
-                        evaluate_loss = temp_evaluate_loss
-                        torch.save(self.net.state_dict(), save_path)
-                    self.net.train()
-                #TODO: 注意rain和temp的边界-99999判断，用一个mask记录-99999 :tick
 
             print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
@@ -160,14 +146,18 @@ class UNetTrainer(nn.Module):
     def BCEloss(self, x, target, reduction='mean'):
         return nn.BCELoss(reduction=reduction)(x, target)
 
-    #生成将所有的-99999变成0,其他为1的mask
+    #生成将所有的-99999变成0,0以95%概率变成0，其他为1的mask
     def get_mask(self, x):
         zero = torch.zeros_like(x)
         ones = torch.ones_like(x)
+        result = x
 
-        x = torch.where(x > -99999, ones, x)
-        x = torch.where(x == -99999, zero, x)
-        return x
+        if torch.rand(1) > 0.05:
+            result = torch.where(x == 0, zero, x)
+        result = torch.where(x == -99999, zero, result)
+        result = torch.where(x > 0, ones, result)
+        #print(result)
+        return result
 
     # 将batchsize*69*73的降水标签添加mask
     def generateResampleMask(self, rain):
@@ -186,7 +176,7 @@ class UNetTrainer(nn.Module):
         for idx, item in enumerate(x):
             result[idx][int(item)] = 1
         #print(x, result)
-        return result.float()
+        return result
 
     def generateOneHot(self, softmax):
         maxIdxs = torch.argmax(softmax, dim=1, keepdim=True).cpu().long()

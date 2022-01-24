@@ -48,7 +48,7 @@ class ConvUNet(nn.Module):
         x = self.out_conv(x)
 
         #要用sigmoid转换为概率！
-        return torch.sigmoid(x), torch.sigmoid(time)
+        return torch.sigmoid(x), time
 
 
 if __name__ == '__main__':
