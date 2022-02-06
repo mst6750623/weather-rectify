@@ -88,13 +88,14 @@ class model(nn.Module):
 
                 torch.set_printoptions(profile="full")
 
-                pred_temperature, time_hat = self.net(input)  #(N, H, W)
-
                 with torch.no_grad():
+                    temperature[temperature < -10.0] = -99999.0
                     mask = self.get_mask(temperature)
                     valid_points = torch.sum(mask)
                     #time = self.generateLabelOneHot(time, shape = (time.shape[0], 8))
                     time = time.squeeze()
+
+                pred_temperature, time_hat = self.net(input)  # (N, H, W)
                 loss_time = nn.CrossEntropyLoss()(time_hat, time)
                 optimizer.zero_grad()
                 loss = nn.L1Loss(reduction='sum')(

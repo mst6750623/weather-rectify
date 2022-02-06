@@ -17,11 +17,12 @@ if __name__ == "__main__":
     args['config'] = config
 
     #model_inst = model('/mnt/pami23/stma/weather/train/', **args).to(device)
-    model_inst = model('data_train', **args).to(device)
+    model_inst = model(config['train_dir'], **args).to(device)
     #输 出train_data中 作 为 验 证 样 本 的 序 号
-    print(model_inst.valid_example)
+    #print(model_inst.valid_example)
     #输 出 训 练 损 失 函 数 和 验 证 评 价 函 数 名 称 ，
     #验 证 评 价 函 数 不 一 定 需 要 和 比 赛 评 价 指 标 一 致 。
-    print(model_inst.train_loss, model_inst.valid_perfomace)
+    #print(model_inst.train_loss, model_inst.valid_perfomace)
     #开 始 训 练
+    model_inst.initialize('/mnt/pami23/zhengxin/projects/temp/checkpoint_new_timeloss/unet_lr0405_05816.pth')
     model_inst.train()
