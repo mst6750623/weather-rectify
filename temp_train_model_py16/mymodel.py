@@ -17,10 +17,14 @@ class model(nn.Module):
         self.net.train()
         self.init_params()
         # 若设置is FirstTime=True,则将会花一些时间对训练输入数据扫描计算mean和std，进行归一化
-        train_dataset = gridDataset(train_data, isTrain=True, isFirstTime=True)
+        train_dataset = gridDataset(train_data,
+                                    isTrain=True,
+                                    isFirstTime=True,
+                                    nwp_num=args['in_channels'])
         evaluate_dataset = gridDataset(train_data,
                                        isTrain=False,
-                                       isFirstTime=False)
+                                       isFirstTime=False,
+                                       nwp_num=args['in_channels'])
         self.train_iter = DataLoader(train_dataset,
                                      batch_size=config['batch_size'],
                                      num_workers=config['num_workers'],

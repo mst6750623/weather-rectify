@@ -12,11 +12,11 @@ def read_file(file):
 
 
 class gridDataset(data.Dataset):
-    def __init__(self, data_path, isTrain=True, isFirstTime=False):
+    def __init__(self, data_path, isTrain=True, isFirstTime=False, nwp_num=22):
         total_len = 0
         self.time_class = [0, 3, 6, 9, 12, 15, 18, 21]
         if isFirstTime:
-            
+
             self.input = []
             self.rain = []
             self.temp = []
@@ -58,7 +58,8 @@ class gridDataset(data.Dataset):
             #计算所有输入数据的mean和std进行数据归一化
             mean = torch.zeros(58)
             std = torch.zeros(58)
-            for idx in tqdm(range(len(self.input)),desc='Calculating mean and std'):
+            for idx in tqdm(range(len(self.input)),
+                            desc='Calculating mean and std'):
                 input = open_dataset(self.input[idx])
                 input_values = read_file(input)
                 i = 0
@@ -84,19 +85,13 @@ class gridDataset(data.Dataset):
             torch.save(mean, 'processed_data/mean.pth')
             torch.save(std, 'processed_data/std.pth')
         else:
-            self.input = np.load(
-                'processed_data/input.npy')
-            self.rain = np.load(
-                'processed_data/rain.npy')
-            self.temp = np.load(
-                'processed_data/temp.npy')
-            self.time = np.load(
-                'processed_data/time.npy')
+            self.input = np.load('processed_data/input.npy')
+            self.rain = np.load('processed_data/rain.npy')
+            self.temp = np.load('processed_data/temp.npy')
+            self.time = np.load('processed_data/time.npy')
             total_len = self.input.shape[0]
-            self.mean = torch.load(
-            'processed_data/mean.pth').numpy()
-            self.std = torch.load(
-            'processed_data/std.pth').numpy()
+            self.mean = torch.load('processed_data/mean.pth').numpy()
+            self.std = torch.load('processed_data/std.pth').numpy()
 
         train_len = int(0.9 * total_len)
         if isTrain:
@@ -112,8 +107,11 @@ class gridDataset(data.Dataset):
             self.time = self.time[train_len:]
             self.length = int(0.1 * total_len)
 
-        
-        self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
+        self.nwp_num = nwp_num
+        if nwp_num == 58 or nwp_num == 59:
+            self.needed = range(45)
+        elif nwp_num == 22:
+            self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         print("length:", self.length)
 
     def __len__(self):
@@ -151,6 +149,8 @@ class gridDataset(data.Dataset):
                     (values - self.mean[i]) / self.std[i].tolist())
                 i += 1
 
+        if self.nwp_num == 59:
+            temp_list.append(rain_values[0].tolist())
         input = np.asarray(temp_list)
 
         input = torch.from_numpy(input)
@@ -163,7 +163,8 @@ class gridDataset(data.Dataset):
 if __name__ == "__main__":
     dataset = gridDataset("/mnt/pami23/stma/weather/train/",
                           isTrain=False,
-                          isFirstTime=False)
+                          isFirstTime=False,
+                          nwp_num=59)
     '''mean = torch.zeros(58)
     std = torch.zeros(58)
     for idx in tqdm(range(dataset.length)):
