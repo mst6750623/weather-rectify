@@ -1,7 +1,7 @@
 train_dir: "/mnt/pami23/stma/weather/train/"
 test_dir: "/mnt/pami23/stma/weather/test/"
 unet:
-  in_channels: 22
+  in_channels: 58
   n_classes: 1
 batch_size: 16
 num_workers: 8

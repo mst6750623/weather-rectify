@@ -2,10 +2,10 @@ import yaml
 
 if __name__ == "__main__":
     from mymodel import model
-    max_epochs = 3000  #最大迭代周期数
+    max_epochs = 10000  #最大迭代周期数
     num_gpus = 1  #使用的GPU数目
-    num_1 = 200  #每个周期内输出训练损失的迭代数间隔
-    num_2 = 50  #输出验证集表现的周期间隔
+    num_1 = 110  #每个周期内输出训练损失的迭代数间隔
+    num_2 = 500  #输出验证集表现的周期间隔
     config = yaml.load(open('config.yaml', 'r'), Loader=yaml.FullLoader)
     device = 'cuda'
     args = dict()
@@ -24,5 +24,6 @@ if __name__ == "__main__":
     #验 证 评 价 函 数 不 一 定 需 要 和 比 赛 评 价 指 标 一 致 。
     #print(model_inst.train_loss, model_inst.valid_perfomace)
     #开 始 训 练
-    model_inst.initialize('/mnt/pami23/zhengxin/projects/temp/checkpoint_new_timeloss/unet_lr0405_05816.pth')
-    model_inst.train()
+    #model_inst.initialize('/mnt/pami23/zhengxin/projects/temp/checkpoint_new_timeloss/unet_lr0405_05816.pth')
+    model_inst.initialize('checkpoint/unet_out_59_best.pth')
+    model_inst.train(lr=1e-7, save_path='checkpoint/unet_out_59_continue.pth')

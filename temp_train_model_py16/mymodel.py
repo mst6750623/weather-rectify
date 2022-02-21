@@ -1,3 +1,4 @@
+from tkinter import E
 import torch
 import torch.nn as nn
 import numpy as np
@@ -18,8 +19,8 @@ class model(nn.Module):
         self.init_params()
         # 若设置is FirstTime=True,则将会花一些时间对训练输入数据扫描计算mean和std，进行归一化
         train_dataset = gridDataset(train_data,
-                                    isTrain=True,
-                                    isFirstTime=True,
+                                    isTrain=False,
+                                    isFirstTime=False,
                                     nwp_num=args['in_channels'])
         evaluate_dataset = gridDataset(train_data,
                                        isTrain=False,
@@ -67,9 +68,9 @@ class model(nn.Module):
     def train(self, lr=1e-5, save_path='checkpoint/unet_out.pth'):
         epoch = self.max_epochs
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-        #                                                  step_size=500000,
-        #                                                  gamma=0.5)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+                                                         step_size=100000,
+                                                         gamma=0.5)
         tb_log_intv = self.show_trainloss_every_num_iterations_per_epoch
         total_steps = 0
         evaluate_loss = 99999
@@ -119,10 +120,9 @@ class model(nn.Module):
                                            loss.item(),
                                            global_step=total_steps)
 
-            if step % 100 == 0:
+            if step % self.show_validperformance_every_num_epochs == 0 and step != 0:
                 torch.save(self.net.state_dict(),
                            save_path[:-4] + '_{}'.format(step) + '.pth')
-            if step % self.show_validperformance_every_num_epochs == 0:
                 temp_evaluate_loss = self.unet_evaluate()
                 self.writer.add_scalar("evaluate_Loss",
                                        temp_evaluate_loss.item(),
@@ -132,7 +132,7 @@ class model(nn.Module):
                     torch.save(self.net.state_dict(),
                                save_path[:-4] + '_best.pth')
                 self.net.train()
-            print('total_loss:{}'.format(np.mean(losses)))
+            #print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
                                    np.mean(losses),
                                    global_step=step)

@@ -17,11 +17,16 @@ class model(nn.Module):
         args = self.config['unet']
         self.mean = torch.load('processed_data/mean.pth').numpy()
         self.std = torch.load('processed_data/std.pth').numpy()
-
+        self.nwp_num = args['in_channels']
+        if self.nwp_num == 58 or self.nwp_num == 59:
+            self.needed = range(45)
+        elif self.nwp_num == 22:
+            self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]
         self.device = device
 
         self.net = ConvUNet(args['in_channels'], args['n_classes']).to(device)
-        self.initialize('checkpoint/unet_lr0405_05816.pth')
+        self.initialize('checkpoint/unet_out_new2_58_best.pth')
+        #self.initialize('../temp_train_model_py16/checkpoint/unet_out_new2_58_best.pth')
 
     def initialize(self, unet_path):
         unet_ckpt = torch.load(unet_path)
@@ -82,6 +87,8 @@ class model(nn.Module):
                 temp_list.append(
                     (values - self.mean[i]) / self.std[i].tolist())
                 i += 1
+        '''if self.nwp_num == 59:
+            temp_list.append(rain_values[0].tolist())'''
         input = np.asarray(temp_list)
         return input
 
