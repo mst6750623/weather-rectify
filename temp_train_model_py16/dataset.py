@@ -15,6 +15,7 @@ class gridDataset(data.Dataset):
     def __init__(self, data_path, isTrain=True, isFirstTime=False, nwp_num=22):
         total_len = 0
         self.time_class = [0, 3, 6, 9, 12, 15, 18, 21]
+        class_num = 8
         if isFirstTime:
 
             self.input = []
@@ -42,11 +43,14 @@ class gridDataset(data.Dataset):
                                     temp_file_name):
                         start_time += 3
                         continue
-                    time_classification = self.time_class.index(start_time)
+                    time_classification = torch.Tensor(
+                        [self.time_class.index(start_time)]).long()
+                    time_onehot = torch.zeros(class_num).scatter_(
+                        0, time_classification, 1)
                     self.input.append(input_file_name)
                     self.rain.append(rain_file_name)
                     self.temp.append(temp_file_name)
-                    self.time.append(time_classification)
+                    self.time.append(time_onehot)
                     total_len += 1
                     start_time += 3
                     if start_time >= 24:
@@ -164,7 +168,15 @@ if __name__ == "__main__":
     dataset = gridDataset("/mnt/pami23/stma/weather/train/",
                           isTrain=False,
                           isFirstTime=False,
-                          nwp_num=59)
+                          nwp_num=58)
+    # time_class = [0, 3, 6, 9, 12, 15, 18, 21]
+    # a = 12
+    # class_num = 8
+    # time_classification = torch.Tensor([time_class.index(a)]).long()
+
+    # print(time_classification)
+    # one_hot = torch.zeros(class_num).scatter_(0, time_classification, 1)
+    # print(one_hot)
     '''mean = torch.zeros(58)
     std = torch.zeros(58)
     for idx in tqdm(range(dataset.length)):

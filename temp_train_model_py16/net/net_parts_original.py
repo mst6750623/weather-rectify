@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from basic_conv import BasicConv2d
+from .basic_conv import BasicConv2d
 
 
 class Conv2times(nn.Module):
@@ -34,9 +34,15 @@ class Downsample(nn.Module):
                  padding,
                  relu=True,
                  bn=True,
+                 H=69,
+                 W=73,
                  **kwargs):
         super(Downsample, self).__init__()
+        self.H = H
+        self.W = W
         self.pooling = nn.MaxPool2d(pooling_size)
+        self.spatial_bias = torch.randn(1, out_channels, H,
+                                        W).cuda().requires_grad_()
         # self.conv1 = BasicConv2d(in_channels, out_channels, kernel_size, padding, relu, bn, **kwargs)
         # self.conv2 = BasicConv2d(out_channels, out_channels, kernel_size, padding, relu, bn, **kwargs)
         self.conv = Conv2times(in_channels, out_channels, kernel_size, padding,
@@ -45,6 +51,7 @@ class Downsample(nn.Module):
     def forward(self, x):
         x = self.pooling(x)
         x = self.conv(x)
+        x = x + self.spatial_bias.expand(x.shape[0], -1, self.H, self.W)
         return x
 
 
@@ -58,9 +65,14 @@ class Upsample(nn.Module):
                  relu=True,
                  bn=True,
                  bilinear=True,
+                 H=69,
+                 W=73,
                  **kwargs):
         super(Upsample, self).__init__()
-
+        self.H = H
+        self.W = W
+        self.spatial_bias = torch.randn(1, out_channels, H,
+                                        W).cuda().requires_grad_()
         if bilinear:
             self.up = nn.Sequential(
                 nn.Upsample(scale_factor=scale_factor,
@@ -90,12 +102,13 @@ class Upsample(nn.Module):
 
         x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)
+        x = x + self.spatial_bias.expand(x.shape[0], -1, self.H, self.W)
         return x
 
 
 if __name__ == '__main__':
-    down = Downsample(2, 22, 44, 3, 1)
-    up = Upsample(2, 44, 22, 3, 1)
+    down = Downsample(2, 22, 44, 3, 1, H=34, W=36)
+    up = Upsample(2, 44, 22, 3, 1, H=69, W=73)
     print(down)
     print(up)
     x = torch.rand(8, 22, 69, 73)

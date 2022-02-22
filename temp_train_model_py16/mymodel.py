@@ -37,8 +37,8 @@ class model(nn.Module):
                                         pin_memory=True)
 
         self.device = kwargs['device']
-        self.writer = SummaryWriter()
-        self.cof = 100
+        self.writer = SummaryWriter(comment='spatial')
+        self.cof = 1
         self.max_epochs = kwargs['max_epochs']
         self.show_trainloss_every_num_iterations_per_epoch = kwargs[
             'show_trainloss_every_num_iterations_per_epoch']
@@ -69,7 +69,7 @@ class model(nn.Module):
         epoch = self.max_epochs
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=100000,
+                                                         step_size=5000,
                                                          gamma=0.5)
         tb_log_intv = self.show_trainloss_every_num_iterations_per_epoch
         total_steps = 0
@@ -97,11 +97,12 @@ class model(nn.Module):
                     time = time.squeeze()
 
                 pred_temperature, time_hat = self.net(input)  # (N, H, W)
-                loss_time = nn.CrossEntropyLoss()(time_hat, time)
+                #loss_time = nn.CrossEntropyLoss()(time_hat, time)
                 optimizer.zero_grad()
-                loss = nn.L1Loss(reduction='sum')(
+                loss = nn.L1Loss(reduction='mean')(
                     mask * temperature, mask * pred_temperature) / valid_points
-                total_loss = loss + self.cof * loss_time
+                #total_loss = 10000 * loss + self.cof * loss_time
+                total_loss = loss
                 total_loss.backward()
                 optimizer.step()
                 total_steps += 1
@@ -113,16 +114,13 @@ class model(nn.Module):
                     self.writer.add_scalar("iter_Loss",
                                            total_loss.item(),
                                            global_step=total_steps)
-                    self.writer.add_scalar("time_Loss",
-                                           loss_time.item(),
-                                           global_step=total_steps)
+                    #self.writer.add_scalar("time_Loss",loss_time.item(),global_step=total_steps)
                     self.writer.add_scalar("classification_Loss",
                                            loss.item(),
                                            global_step=total_steps)
 
             if step % self.show_validperformance_every_num_epochs == 0 and step != 0:
-                torch.save(self.net.state_dict(),
-                           save_path[:-4] + '_{}'.format(step) + '.pth')
+                #torch.save(self.net.state_dict(),save_path[:-4] + '_{}'.format(step) + '.pth')
                 temp_evaluate_loss = self.unet_evaluate()
                 self.writer.add_scalar("evaluate_Loss",
                                        temp_evaluate_loss.item(),
