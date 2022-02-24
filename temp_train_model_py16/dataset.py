@@ -22,7 +22,7 @@ class gridDataset(data.Dataset):
             self.rain = []
             self.temp = []
             self.time = []
-            for i in tqdm(range(1962), desc="Scanning dataset files"):
+            for i in tqdm(range(1960), desc="Scanning dataset files"):
                 file_name = data_path + 'example' + '{:0>5d}'.format(i +
                                                                      1) + '/'
                 #由于是预测12-36小时，所以起始时间+12
@@ -92,7 +92,7 @@ class gridDataset(data.Dataset):
             self.input = np.load('processed_data/input.npy')
             self.rain = np.load('processed_data/rain.npy')
             self.temp = np.load('processed_data/temp.npy')
-            self.time = np.load('processed_data/time.npy')
+            self.time = np.load('processed_data/time.npy', allow_pickle=True)
             total_len = self.input.shape[0]
             self.mean = torch.load('processed_data/mean.pth').numpy()
             self.std = torch.load('processed_data/std.pth').numpy()
@@ -112,7 +112,7 @@ class gridDataset(data.Dataset):
             self.length = int(0.1 * total_len)
 
         self.nwp_num = nwp_num
-        if nwp_num == 58 or nwp_num == 59:
+        if nwp_num >= 58:
             self.needed = range(45)
         elif nwp_num == 22:
             self.needed = [0, 8, 14, 17, 22, 28, 31, 35, 40]

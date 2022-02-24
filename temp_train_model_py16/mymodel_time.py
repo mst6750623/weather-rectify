@@ -1,12 +1,14 @@
+from hashlib import new
 from tkinter import E
 import torch
 import torch.nn as nn
 import numpy as np
-from net.conv_unet import ConvUNet
+from net.conv_unet_original import ConvUNet
 from torch.utils.data.dataloader import DataLoader
 from dataset import gridDataset
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
+from net.timeReflect import TimeReflect
 
 
 class model(nn.Module):
@@ -16,6 +18,8 @@ class model(nn.Module):
         args = config['unet']
         self.net = ConvUNet(args['in_channels'], args['n_classes'])
         self.net.train()
+        self.timeReflect = TimeReflect(8, 4)
+        self.timeReflect.train()
         self.init_params()
         # 若设置is FirstTime=True,则将会花一些时间对训练输入数据扫描计算mean和std，进行归一化
         train_dataset = gridDataset(train_data,
@@ -37,7 +41,7 @@ class model(nn.Module):
                                         pin_memory=True)
 
         self.device = kwargs['device']
-        self.writer = SummaryWriter(comment='spatial')
+        self.writer = SummaryWriter(comment='time')
         self.cof = 1
         self.max_epochs = kwargs['max_epochs']
         self.show_trainloss_every_num_iterations_per_epoch = kwargs[
@@ -50,7 +54,8 @@ class model(nn.Module):
 
     def initialize(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
-        self.net.load_state_dict(checkpoint)
+        self.net.load_state_dict(checkpoint['unet_state_dict'])
+        self.timeReflect.load_state_dict(checkpoint['time_reflect_state_dict'])
         print('loading checkpoint:', checkpoint_path)
 
     def init_params(self):
@@ -83,9 +88,11 @@ class model(nn.Module):
                 input = input.type(torch.FloatTensor).to(self.device)
                 temperature = temperature.type(torch.FloatTensor).to(
                     self.device)  #(N, H, W)
-                time = time.type(torch.int64).to(self.device)
+                time = time.to(self.device)
+                time = self.timeReflect(time)
 
                 batch_size = input.shape[0]
+                time = time.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 69, 73)
 
                 torch.set_printoptions(profile="full")
 
@@ -94,9 +101,10 @@ class model(nn.Module):
                     mask = self.get_mask(temperature)
                     valid_points = torch.sum(mask)
                     #time = self.generateLabelOneHot(time, shape = (time.shape[0], 8))
-                    time = time.squeeze()
+                    #time = time.squeeze()
+                newinput = torch.cat([input, time], dim=1)
 
-                pred_temperature, time_hat = self.net(input)  # (N, H, W)
+                pred_temperature = self.net(newinput)  # (N, H, W)
                 #loss_time = nn.CrossEntropyLoss()(time_hat, time)
                 optimizer.zero_grad()
                 loss = nn.L1Loss(reduction='mean')(
@@ -127,8 +135,14 @@ class model(nn.Module):
                                        global_step=total_steps)
                 if temp_evaluate_loss < evaluate_loss:
                     evaluate_loss = temp_evaluate_loss
-                    torch.save(self.net.state_dict(),
-                               save_path[:-4] + '_best.pth')
+
+                    torch.save(
+                        {
+                            'time_reflect_state_dict':
+                            self.timeReflect.state_dict(),
+                            'unet_state_dict':
+                            self.net.state_dict(),
+                        }, save_path[:-4] + '_best.pth')
                 self.net.train()
             #print('total_loss:{}'.format(np.mean(losses)))
             self.writer.add_scalar("epoch_Loss",
@@ -144,13 +158,17 @@ class model(nn.Module):
         self.net.eval()
         for i, iter in enumerate(tqdm(self.evaluate_iter)):
             with torch.no_grad():
-                input, _, temperature, _ = iter
+                input, _, temperature, time = iter
                 input = input.type(torch.FloatTensor).to(self.device)
+                time = time.to(self.device)
                 batch_size = temperature.shape[0]
-
+                time = self.timeReflect(time)
+                time = time.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 69, 73)
+                #print(time.shape)
+                newinput = torch.cat([input, time], dim=1)
                 temperature = temperature.type(torch.FloatTensor).to(
                     self.device)
-                pred_temperature, _ = self.net(input)
+                pred_temperature = self.net(newinput)
 
                 mask = self.get_mask(temperature)
                 valid_points = torch.sum(mask)

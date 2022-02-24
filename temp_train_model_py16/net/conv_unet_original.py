@@ -49,15 +49,15 @@ class ConvUNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        time = self.timenet(x)
+        #time = self.timenet(x)
         x = self.out_conv(x)
 
         #输出层仅仅是1 * 1卷积就输出了，没有激活函数
-        return x.squeeze(), time
+        return x.squeeze()
 
 
 if __name__ == '__main__':
     net = ConvUNet(58, 1).to('cuda')
     x = torch.rand(8, 58, 69, 73).to('cuda')
-    x, time = net(x)
-    print(x.shape, time.shape)
+    x = net(x)
+    #print(x.shape, time.shape)

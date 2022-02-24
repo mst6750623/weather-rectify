@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .net_parts_original import *
+from .net_parts_spatial import *
 
 
 class ConvUNet(nn.Module):
@@ -82,9 +82,9 @@ class ConvUNet(nn.Module):
 
         self.out_conv = nn.Conv2d(64 // self.coeff, n_classes, kernel_size=1)
 
-        self.timenet = nn.Sequential(
+        '''self.timenet = nn.Sequential(
             nn.Flatten(), nn.Linear(64 // self.coeff * 69 * 73, 1024),
-            nn.ReLU(True), nn.Linear(1024, 8))
+            nn.ReLU(True), nn.Linear(1024, 8))'''
 
     def forward(self, x):
         x1 = self.in_conv(x)
@@ -97,11 +97,11 @@ class ConvUNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        time = self.timenet(x)
+
         x = self.out_conv(x)
 
         #输出层仅仅是1 * 1卷积就输出了，没有激活函数
-        return x.squeeze(), time
+        return x.squeeze()
 
 
 if __name__ == '__main__':
