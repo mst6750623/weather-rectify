@@ -16,7 +16,7 @@ from net.timeReflect import TimeReflect
 class Validate(nn.Module):
     def __init__(self, args, data_iter, device):
         super(Validate, self).__init__()
-        self.unet = ConvUNet(args['in_channels'], args['n_classes'])
+        self.unet = ConvUNet(62, args['n_classes'])
         self.timeReflect = TimeReflect(8, 4)
         self.data_iter = data_iter
         self.device = device
@@ -109,6 +109,6 @@ if __name__ == '__main__':
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter, device).to(device)
     #validate.initialize('checkpoint/unet_lr0405_801.pth')
-    validate.initialize('checkpoint/unet_0223_58_time_test_best.pth')
+    validate.initialize('checkpoint/unet_0225_58_time_best.pth')
     #validate.forward()
     validate.simple_validate()

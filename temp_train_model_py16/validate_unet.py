@@ -22,7 +22,7 @@ class Validate(nn.Module):
 
     def initialize(self, unet_path):
         unet_ckpt = torch.load(unet_path)
-        print('loading checkpoint:', unet_path, unet_ckpt)
+        print('loading checkpoint:', unet_path)
 
         self.unet.load_state_dict(unet_ckpt)
         self.unet.eval()
@@ -100,6 +100,6 @@ if __name__ == '__main__':
     device = 'cuda'
     validate = Validate(config['unet'], evaluate_iter, device).to(device)
     #validate.initialize('checkpoint/unet_lr0405_801.pth')
-    validate.initialize('checkpoint/unet_0223_58_spatial_test_best.pth')
+    validate.initialize('checkpoint/unet_0225_58_spatial_best.pth')
     #validate.forward()
     validate.simple_validate()

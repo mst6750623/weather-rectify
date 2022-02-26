@@ -23,7 +23,7 @@ class model(nn.Module):
         self.init_params()
         # 若设置is FirstTime=True,则将会花一些时间对训练输入数据扫描计算mean和std，进行归一化
         train_dataset = gridDataset(train_data,
-                                    isTrain=False,
+                                    isTrain=True,
                                     isFirstTime=False,
                                     nwp_num=args['in_channels'])
         evaluate_dataset = gridDataset(train_data,
@@ -74,7 +74,7 @@ class model(nn.Module):
         epoch = self.max_epochs
         optimizer = torch.optim.Adam(list(self.net.parameters()), lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                         step_size=5000,
+                                                         step_size=10000,
                                                          gamma=0.5)
         tb_log_intv = self.show_trainloss_every_num_iterations_per_epoch
         total_steps = 0
@@ -113,6 +113,7 @@ class model(nn.Module):
                 total_loss = loss
                 total_loss.backward()
                 optimizer.step()
+                self.scheduler.step()
                 total_steps += 1
                 losses.append(loss.item())
 
@@ -126,6 +127,7 @@ class model(nn.Module):
                     self.writer.add_scalar("classification_Loss",
                                            loss.item(),
                                            global_step=total_steps)
+                    print(optimizer.state_dict()['param_groups'][0]['lr'])
 
             if step % self.show_validperformance_every_num_epochs == 0 and step != 0:
                 #torch.save(self.net.state_dict(),save_path[:-4] + '_{}'.format(step) + '.pth')
